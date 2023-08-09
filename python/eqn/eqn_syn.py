@@ -41,6 +41,14 @@ class Circuit:
            if d['info'].ref == edge_ref:
                return d['info']
 
+    def get_ref_from_instance(self, instance):
+
+        for (u,v,d) in self.G.edges(data=True):
+           if d['info'].instance == instance:
+               return d['info'].ref
+
+        return -1
+
     def get_im(self, x, t):
 
         I = np.zeros(self.num_edges)

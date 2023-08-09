@@ -17,20 +17,6 @@ import matplotlib.pyplot as plt
 
 import math
 
-nmos_params = {"KP"     : 120e-6,
-               "vth"    : 0.8,
-               "lambda" : 0.01,
-               "L"      : 2,
-               "W"      : 10}
-
-pmos_params = {"KP"     : 40e-6,
-               "vth"    : 0.9,
-               "lambda" : 0.0125,
-               "L"      : 2,
-               "W"      : 30}
-
-vgs_1_ref = 0
-
 def add_nmos(g, d, s, KP, vth, l_lambda, L, W, ckt):
     ids = vccs_l1_mosfet()
     ids.set_type(ElementType.current_src)
@@ -76,14 +62,8 @@ def add_circuit(ckt):
     VCC = 1
     n1  = 2
     n2  = 3
-    n3  = 4
     n4  = 5
-    n5  = 6
-    v1  = 7
-    v2  = 8
-    v3  = 9
-    v4  = 10
-    nvout = 11
+    vout  = 7
 
     # Add Vs
     vs = voltage_src()
@@ -92,57 +72,36 @@ def add_circuit(ckt):
     vs.set_value(value=5.0)
     ckt.add_edge(VCC, GND, vs)
 
-    # Add pmos M3
-    add_pmos(g=n1, d=n1, s=VCC, KP=40e-6, vth=0.9, l_lambda=0.0125, L=2, W=30, ckt=ckt)
-
-    # Add pmos M4
-    add_pmos(g=n1, d=nvout, s=VCC, KP=40e-6, vth=0.9, l_lambda=0.0125, L=2, W=30, ckt=ckt)
-
-    # Add nmos M1
-    add_nmos(g=v1, d=n1, s=n4, KP=120e-6, vth=0.8, l_lambda=0.01, L=2, W=10, ckt=ckt)
+    # Add nmos M4
+    add_nmos(g=n1, d=vout, s=n2, KP=120e-6, vth=0.8, l_lambda=0.01, L=2, W=10, ckt=ckt)
 
     # Add nmos M2
-    add_nmos(g=v2, d=nvout, s=n4, KP=120e-6, vth=0.8, l_lambda=0.01, L=2, W=10, ckt=ckt)
+    add_nmos(g=n4, d=n2, s=GND, KP=120e-6, vth=0.8, l_lambda=0.01, L=2, W=10, ckt=ckt)
 
-    # Add nmos M6T
-    add_nmos(g=v3, d=n4, s=n5, KP=120e-6, vth=0.8, l_lambda=0.01, L=2, W=20, ckt=ckt)
+    # Add nmos M3
+    add_nmos(g=n1, d=n1, s=n4, KP=120e-6, vth=0.8, l_lambda=0.01, L=2, W=10, ckt=ckt)
 
-    # Add nmos M6B
-    add_nmos(g=v4, d=n5, s=GND, KP=120e-6, vth=0.8, l_lambda=0.01, L=2, W=20, ckt=ckt)
+    # Add nmos M1
+    add_nmos(g=n4, d=n4, s=GND, KP=120e-6, vth=0.8, l_lambda=0.01, L=2, W=10, ckt=ckt)
 
-    # Add Vgs V1
-    vgs_1_ref = ckt.num_edges
-    vgs_1 = voltage_src()
-    vgs_1.set_type(ElementType.voltage_src)
-    vgs_1.set_instance("VGS_1")
-    ckt.add_edge(v1, GND, vgs_1)
+    # Add Vo
+    vo = voltage_src()
+    vo.set_type(ElementType.voltage_src)
+    vo.set_instance("Vo")
+    ckt.add_edge(vout, GND, vo)
 
-    # Add Vgs V2
-    vgs_2 = voltage_src()
-    vgs_2.set_type(ElementType.voltage_src)
-    vgs_2.set_instance("VGS_2")
-    vgs_2.set_value(value=4.0)
-    ckt.add_edge(v2, GND, vgs_2)
-
-    # Add Vbias3
-    vb3 = voltage_src()
-    vb3.set_type(ElementType.voltage_src)
-    vb3.set_instance("Vbias3")
-    vb3.set_value(value=1.49)
-    ckt.add_edge(v3, GND, vb3)
-
-    # Add Vbias4
-    vb4 = voltage_src()
-    vb4.set_type(ElementType.voltage_src)
-    vb4.set_instance("Vbias4")
-    vb4.set_value(value=1.086)
-    ckt.add_edge(v4, GND, vb4)
+    # Add Iref
+    iref = current_src()
+    iref.set_type(ElementType.current_src)
+    iref.set_instance("Iref")
+    iref.set_value(20e-6)
+    ckt.add_edge(VCC, n1, iref)
 
 def circuit_eqn(x, ckt, vgs_1):
 
-    # set Vgs_1
-    vgs_1_ref = ckt.get_ref_from_instance("VGS_1")
-    ckt.set_value(ref=vgs_1_ref, value=vgs_1)
+    # set Vo
+    Vo_ref = ckt.get_ref_from_instance("Vo")
+    ckt.set_value(ref=Vo_ref, value=vgs_1)
 
     # current Im
     I = ckt.get_im(x=x, t=0)
@@ -168,34 +127,66 @@ def main():
 
     root_start = np.ones(ckt.num_edges)
     vs         = 5.0
-    vgs_sweep  = np.arange(3.9, 4.1, 0.001)
-    i_vs       = np.zeros([len(vgs_sweep)])
-    v_vds_n1   = np.zeros([len(vgs_sweep)])
+    vo_sweep   = np.arange(0.15, 5.0, 0.01)
+    i_vs       = np.zeros([len(vo_sweep)])
+    v_vds_n2   = np.zeros([len(vo_sweep)])
 
-    for idx, vgs in enumerate(vgs_sweep):
-        root       = optimize.root(circuit_eqn, root_start, args=(ckt, vgs), tol=1e-9)
+    v_vgs_n1   = np.zeros([len(vo_sweep)])
+    v_vgs_n2   = np.zeros([len(vo_sweep)])
+    v_vgs_n3   = np.zeros([len(vo_sweep)])
+    v_vgs_n4   = np.zeros([len(vo_sweep)])
+
+    for idx, vo in enumerate(vo_sweep):
+        root       = optimize.root(circuit_eqn, root_start, args=(ckt, vo), tol=1e-9)
         root_start = root.x
         if not root.success:
             sys.exit()
 
+        ids_n1 = ckt.get_edge_info(7)
+        igs_n1 = ckt.get_edge_info(8)
+        ids_n2 = ckt.get_edge_info(3)
+        igs_n2 = ckt.get_edge_info(4)
+        ids_n3 = ckt.get_edge_info(5)
+        igs_n3 = ckt.get_edge_info(6)
+        ids_n4 = ckt.get_edge_info(1)
+        igs_n4 = ckt.get_edge_info(2)
+
         i_vs[idx]     = root.x[0]
-        v_vds_n1[idx] = 5.0 - root.x[3]
+        v_vds_n2[idx] = ids_n2.get_voltage(x=root.x, t=0)
+
+        v_vgs_n1[idx] = igs_n1.get_voltage(x=root.x, t=0)
+        v_vgs_n2[idx] = igs_n2.get_voltage(x=root.x, t=0)
+        v_vgs_n3[idx] = igs_n3.get_voltage(x=root.x, t=0)
+        v_vgs_n4[idx] = igs_n4.get_voltage(x=root.x, t=0)
+
 
     fig, ax1 = plt.subplots()
     ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
 
-    plt.grid()
+    ax1.grid()
 
-    ax1.plot(vgs_sweep, v_vds_n1,       color='blue',  label="V_DS_N1")
+    ax1.plot(vo_sweep, v_vds_n2,       color='blue',  label="V_DS_N2")
     ax1.set_ylabel('v')
     ax1.legend()
 
-    ax2.plot(vgs_sweep, i_vs,    color='red', label="i_vs")
+    ax2.plot(vo_sweep, i_vs,    color='red', label="i_vs")
     ax2.set_ylabel('i')
 
     ax2.legend()
 
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
+
+    plt.show(block=False)
+    plt.grid()
+
+    fig, ax1 = plt.subplots()
+    ax1.plot(vo_sweep, v_vgs_n1,       color='red',   label="V_GS_N1")
+    ax1.plot(vo_sweep, v_vgs_n2,       color='green', label="V_GS_N2")
+    ax1.plot(vo_sweep, v_vgs_n3,       color='orange',label="V_GS_N3")
+    ax1.plot(vo_sweep, v_vgs_n4,       color='purple',label="V_GS_N4")
+
+    ax1.grid()
+    ax1.legend()
 
     plt.show()
 
