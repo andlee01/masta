@@ -1,0 +1,41 @@
+\documentclass{standalone}
+
+\usepackage{tikz}
+\usepackage[europeanresistors,americaninductors,americancurrents,siunitx]{circuitikz}
+
+\begin{document}
+ \begin{circuitikz}
+
+    \draw (0,0) node[ground](GND){};
+    \draw (0,4) node[vcc](VCC){$V_{CC}$};
+
+    % The FET transistor
+    \draw (0,2) node[nmos, xscale=-1, anchor=D](F){} node[below left,yshift=0.3cm] at (F) {M1};   
+    
+    % Vds voltage arrow
+    \draw (F.S) to [open] ++(-1,0) node(FS-) {};
+    \draw (F.D) to [open] ++(-1,0) node(FD-) {};
+    \draw (FS-) to [open, v^=$V_{DS}$] (FD-);
+
+    % Vgs voltage arrow
+    \draw (F.G) ++(0,-0.25) node[right] (vgs+){};
+    \draw (F.S) ++(0.25,0)  node[right] (vgs-){};
+    \draw (vgs-) to [open, v_=$V_{GS}$] (vgs+);
+
+    % Current source
+    \draw (VCC) to[I, l=$i_{REF}$] (F.D);
+
+    % Connect source to GND
+    \draw (F.S) to[short] (GND);
+
+    % Gate-drain connection
+    \draw (F.G) to[short] (F.G |- F.D) to[short] (F.D);
+    \draw (F.D) node[circ] {} node[left] {};
+    \draw (F.G) node[circ] {} node[left] {};
+
+    % Output connection
+    \draw (F.G) to[short] ++(1,0) node(OUT) {};
+    \draw (OUT) node[ocirc] {} node[right] {$V_{BIAS}$};
+
+ \end{circuitikz}
+ \end{document}
