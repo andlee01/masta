@@ -162,5 +162,17 @@ class vccs_l1_mosfet(TwoPortElement):
         else:
             return 0.0
 
+    def get_region(self, x):
+
+        self.vds = x[self.ref]
+        self.vgs = x[self.vgs_ref]
+
+        if self.check_tri():
+            return 1
+        elif self.check_sat():
+            return 0
+        else:
+            return -1
+
     def get_weight(self):
         return 3

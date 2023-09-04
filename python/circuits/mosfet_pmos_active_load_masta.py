@@ -243,13 +243,15 @@ def main():
     isd.set_ref(0)
     isd.set_vgs_ref(1)
 
+    ax = plt.subplot()
+
     for vgs_idx, vgs in enumerate(vgs_sweep):
         for vds_idx, vds in enumerate(vds_sweep):
 
             x = [vds, vgs]
             i_ds_n1[vgs_idx][vds_idx] = ids.get_current(x=x, t=0)
 
-        l = str(vgs)
+        l = "Vgs = {:.2f}".format(vgs)
         plt.plot(vds_sweep, i_ds_n1[vgs_idx], label=l)
 
     vsg = 5.0 - 3.84
@@ -262,7 +264,13 @@ def main():
     l = "isd"
     plt.plot(vds_sweep, i_sd_p1, label=l)
 
-    plt.legend()
+    # Shrink current axis by 20%
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+
+    # Put a legend to the right of the current axis
+    plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+
     plt.show(block=False)
 
     # Diode Connected
@@ -274,7 +282,7 @@ def main():
 
     root_start = np.ones(6)
     vs         = 5.0
-    vgs_sweep  = np.arange(1.0, 1.2, 0.01)
+    vgs_sweep  = np.arange(1.0, 1.2, 0.0001)
     i_vs       = np.zeros([len(vgs_sweep)])
     v_vds_n1   = np.zeros([len(vgs_sweep)])
 
@@ -320,8 +328,11 @@ def main():
     i_isd_p1   = np.zeros([len(vgs_sweep)])
     v_vds_n1   = np.zeros([len(vgs_sweep)])
 
+    r_n1       = np.zeros([len(vgs_sweep)])
+    r_p1       = np.zeros([len(vgs_sweep)])
+
     for idx, vgs in enumerate(vgs_sweep):
-        root       = optimize.root(circuit_eqn_vref, root_start, args=(ckt_vref, vs, vgs, vref), tol=1e-12)
+        root       = optimize.root(circuit_eqn_vref, root_start, args=(ckt_vref, vs, vgs, vref), tol=1e-8)
         root_start = root.x
 
         if not root.success:
@@ -336,19 +347,36 @@ def main():
         i_ids_n1[idx] = ids.get_current(x=root.x, t=0)
         i_isd_p1[idx] = isd.get_current(x=root.x, t=0)
 
+        r_n1[idx] = ids.get_region(x=root.x)
+        r_p1[idx] = isd.get_region(x=root.x)
+
     fig, ax1 = plt.subplots()
     ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
 
     plt.grid()
 
-    ax1.plot(vgs_sweep, v_vds_n1,       color='blue',  label="V_DS_N1")
-    ax1.set_ylabel('v')
-    ax1.legend()
+    ax1.plot(vgs_sweep, v_vds_n1,       color='blue',    label="V_DS_N1")
 
-    ax2.plot(vgs_sweep, i_vs,     color='red',   label="i_vs")
-    ax2.plot(vgs_sweep, i_ids_n1, color='blue',  label="i_n1")
-    ax2.plot(vgs_sweep, i_isd_p1, color='green', label="i_p1")
-    ax2.set_ylabel('i')
+    # Add an invisible plot and use to fill region
+    ax1.plot(vgs_sweep, r_n1, alpha=0.0)
+    ax1.fill_between(vgs_sweep, 0, 1, where=r_n1 > 0.5,
+                     color='green', alpha=0.2, transform=ax1.get_xaxis_transform())
+    ax1.text(1.1, 2.5, r"$n_1$ in triode", fontsize=10)
+
+    ax1.plot(vgs_sweep, r_p1, alpha=0.0)
+    ax1.fill_between(vgs_sweep, 0, 1, where=r_p1 > 0.5,
+                     color='blue', alpha=0.2, transform=ax1.get_xaxis_transform())
+    ax1.text(1.0, 2.5, r"$p_1$ in triode", fontsize=10)
+
+
+    ax1.set_ylabel("$V_{DSM1} (V)$")
+    ax1.set_xlabel("$V_{GSM1} (V)$")
+    ax1.legend(loc="center right")
+
+    ax2.plot(vgs_sweep, i_vs,     color='red',   label="$i_{vs}$")
+    ax2.plot(vgs_sweep, i_ids_n1, color='blue',  label="$i_{n1}$")
+    ax2.plot(vgs_sweep, i_isd_p1, color='green', label="$i_{p1}$")
+    ax2.set_ylabel("$i (A)$")
 
     ax2.legend()
 

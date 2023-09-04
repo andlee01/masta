@@ -154,12 +154,13 @@ def main():
         l = "Vgs = {:.2f}".format(vgs)
         plt.plot(vds_sweep, i_ds_n1[vgs_idx], label=l)
 
-    ax1.plot(v_vds_m1, i_ids_m1,       color='blue',  label="i_DS_M1")
+    ax1.plot(v_vds_m1, i_ids_m1,       color='blue',  label="$i_{DS}M_1$")
     ax1.set_ylabel("Ids (A)")
     ax1.set_xlabel("Vds (V)")
     ax1.legend(loc="right")
 
     plt.savefig("../../doc/plt_mosfet_bias_ex1.svg", bbox_inches = 'tight')
+    plt.savefig("../../doc/plt_mosfet_bias_ex1.png", bbox_inches = 'tight')
 
     #plt.show()
 
