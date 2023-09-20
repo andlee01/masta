@@ -46,6 +46,10 @@ class TwoPortElement(ABC):
         pass
 
     @abstractmethod
+    def upd_linalg_mtrx(self, x, sys, t, linalg_qf, linalg_bf, linalg_b):
+        pass
+
+    @abstractmethod
     def get_weight(self):
         pass
 
@@ -73,6 +77,13 @@ class voltage_src(TwoPortElement):
     def get_weight(self):
         return 0
 
+    def upd_linalg_mtrx(self, x, sys, t, linalg_qf, linalg_bf, linalg_b):
+
+        linalg_b             += -1 * self.get_voltage(x=x, t=t) * linalg_bf[:,self.ref]
+        linalg_bf[:,self.ref] = 0
+
+        return [linalg_qf, linalg_bf, linalg_b]
+
 class current_src(TwoPortElement):
 
     def get_voltage(self, x, t):
@@ -83,6 +94,13 @@ class current_src(TwoPortElement):
 
     def get_weight(self):
         return 3
+
+    def upd_linalg_mtrx(self, x, sys, t, linalg_qf, linalg_bf, linalg_b):
+
+        linalg_b             += -1 * self.get_current(x=x, t=t) * linalg_qf[:,self.ref]
+        linalg_qf[:,self.ref] = 0
+
+        return [linalg_qf, linalg_bf, linalg_b]
 
 class vccs_l1_mosfet(TwoPortElement):
 
@@ -160,6 +178,7 @@ class vccs_l1_mosfet(TwoPortElement):
         elif self.check_sat():
             return self.sat()
         else:
+            return (1e-9 * self.vds)
             return 0.0
 
     def get_region(self, x):
@@ -176,3 +195,23 @@ class vccs_l1_mosfet(TwoPortElement):
 
     def get_weight(self):
         return 3
+
+    def upd_linalg_mtrx(self, x, sys, t, linalg_qf, linalg_bf, linalg_b):
+
+        v_step = 1e-3
+
+        x_upper = x + v_step
+        val_upper = self.get_current(x=x_upper, t=t)
+
+        x_lower = x - v_step
+        val_lower = self.get_current(x=x_lower, t=t)
+
+        geq = (val_upper - val_lower) / (2 * v_step)
+
+        f_idc = self.get_current(x=x, t=t)
+        ieq   = f_idc - geq * x[self.ref]
+
+        linalg_b             += -1 * ieq * linalg_qf[:,self.ref]
+        linalg_qf[:,self.ref] = geq * linalg_qf[:,self.ref]
+
+        return [linalg_qf, linalg_bf, linalg_b]

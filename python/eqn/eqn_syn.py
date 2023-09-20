@@ -67,6 +67,19 @@ class Circuit:
 
         return V
 
+    def get_linalg_mtrx(self, x, sys, t):
+
+        linalg_qf = self.qf.copy()
+        linalg_bf = self.bf.copy()
+        linalg_b  = np.zeros(self.num_edges)
+
+        #print(linalg_qf)
+
+        for (u,v,d) in self.G.edges(data=True):
+            [linalg_qf, linalg_bf, linalg_b] = d['info'].upd_linalg_mtrx(x=x, sys=sys, t=t, linalg_qf=linalg_qf, linalg_bf=linalg_bf, linalg_b=linalg_b)
+
+        return [linalg_qf, linalg_bf, linalg_b]
+
     def set_value(self, ref, value):
 
         for (u,v,d) in self.G.edges(data=True):
