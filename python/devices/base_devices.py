@@ -1,6 +1,8 @@
 from enum import Enum
 from abc import ABC, abstractmethod
 
+import numpy as np
+
 class ElementType(Enum):
     undefined   = 0
     resistor    = 1
@@ -14,7 +16,9 @@ class TwoPortElement(ABC):
     def __init__(self):
         self.value       = 0.0
         self.type        = ElementType.undefined
-        self.dependant   = False
+        self.sys_var     = False
+        self.sys_var_ref = -1
+        self.degen_ref   = -1
 
     def set_value(self, value):
         self.value = value
@@ -31,18 +35,33 @@ class TwoPortElement(ABC):
     def set_ref(self, ref):
         self.ref = ref
 
+    def set_sys_var(self, ref):
+        self.sys_var     = True
+        self.sys_var_ref = ref
+
+    def set_degen_ref(self, ref):
+        self.degen_ref = ref
+
     def get_ref(self):
         return self.ref
 
-    def get_dependant(self):
-        return self.dependant
+    def get_degen_ref(self):
+        return self.degen_ref
 
     @abstractmethod
-    def get_voltage(self, x, t):
+    def get_voltage(self, scb):
         pass
 
     @abstractmethod
-    def get_current(self, x, t):
+    def get_current(self, scb):
+        pass
+
+    @abstractmethod
+    def get_degen_current(self, scb):
+        pass
+
+    @abstractmethod
+    def get_dy(self, x, sys):
         pass
 
     @abstractmethod
@@ -57,22 +76,95 @@ class resistor(TwoPortElement):
 
     # sys vector variable is current through resistor
     #  - V = i * R
-    def get_voltage(self, x, t):
-        return x[self.ref] * self.value
+    def get_voltage(self, scb):
+        return scb.x[self.ref] * self.value
 
-    def get_current(self, x, t):
-        return x[self.ref]
+    def get_current(self, scb):
+        return scb.x[self.ref]
+
+    def get_degen_current(self, scb):
+        return
 
     def get_weight(self):
         return 2
 
+    def get_dy(self, x, sys):
+        return sys
+
+    def upd_linalg_mtrx(self, x, sys, t, linalg_qf, linalg_bf, linalg_b):
+        return
+
+
+class capacitor(TwoPortElement):
+
+    def get_voltage(self, scb):
+
+        if self.sys_var_ref != -1:
+            return scb.sys[self.sys_var_ref]
+
+        # non sys-var cap
+        #  - Voltage is dependent variable and not solved for
+        return 0
+
+    def get_current(self, scb):
+        return scb.x[self.ref]
+
+    def get_degen_current(self, scb):
+
+        bf_loop = scb.degen_mtrx[self.ref,:].copy()
+        bf_loop[self.ref] = 0
+
+        # i = C *ddt(V)
+        # Multiply by -1 to account for moving of ddt to RHS
+        #  - i.e. ddt(Vc1) + ddt(Vc2) + ddt(V) = 0
+        #                               ddt(V) = -1 * ( ddt(Vc1) + ddt(Vc2) )
+        return -1 * np.dot(bf_loop, scb.dv) * self.value
+
+    def get_weight(self):
+        return 0
+
+    def get_dy(self, x, sys):
+
+        if self.sys_var_ref != -1:
+            sys[self.sys_var_ref] = x[self.ref] / self.value
+
+        return sys
+
+    def upd_linalg_mtrx(self, x, sys, t, linalg_qf, linalg_bf, linalg_b):
+        return
+
+class inductor(TwoPortElement):
+
+    def get_voltage(self, scb):
+        return scb.x[self.ref]
+
+    def get_current(self, scb):
+        return scb.sys[self.sys_var_ref]
+
+    def get_degen_current(self, scb):
+        return
+
+    def get_weight(self):
+        return 4
+
+    def get_dy(self, x, sys):
+        sys[self.sys_var_ref] = x[self.ref] / self.value
+
+        return sys
+
+    def upd_linalg_mtrx(self, x, sys, t, linalg_qf, linalg_bf, linalg_b):
+        return
+
 class voltage_src(TwoPortElement):
 
-    def get_voltage(self, x, t):
+    def get_voltage(self, scb):
         return self.value
 
-    def get_current(self, x, t):
-        return x[self.ref]
+    def get_current(self, scb):
+        return scb.x[self.ref]
+
+    def get_degen_current(self, scb):
+        return
 
     def get_weight(self):
         return 0
@@ -84,13 +176,19 @@ class voltage_src(TwoPortElement):
 
         return [linalg_qf, linalg_bf, linalg_b]
 
+    def get_dy(self, x, sys):
+        return sys
+
 class current_src(TwoPortElement):
 
-    def get_voltage(self, x, t):
+    def get_voltage(self, x, sys, t, bf, vm_sys):
         return x[self.ref]
 
-    def get_current(self, x, t):
+    def get_current(self, x, sys, t, bf, vm_sys_dy):
         return self.value
+
+    def get_degen_current(self, x, sys, t, bf, vm_sys_dy):
+        return
 
     def get_weight(self):
         return 3
@@ -101,6 +199,9 @@ class current_src(TwoPortElement):
         linalg_qf[:,self.ref] = 0
 
         return [linalg_qf, linalg_bf, linalg_b]
+
+    def get_dy(self, x, sys):
+        return sys
 
 class vccs_l1_mosfet(TwoPortElement):
 
@@ -165,10 +266,13 @@ class vccs_l1_mosfet(TwoPortElement):
 
         return id
 
-    def get_voltage(self, x, t):
+    def get_voltage(self, x, sys, t, bf, vm_sys):
         return x[self.ref]
 
-    def get_current(self, x, t):
+    def get_degen_current(self, x, sys, t, bf, vm_sys_dy):
+        return
+
+    def get_current(self, x, sys, t, bf, vm_sys_dy):
 
         self.vds = x[self.ref]
         self.vgs = x[self.vgs_ref]
@@ -215,3 +319,6 @@ class vccs_l1_mosfet(TwoPortElement):
         linalg_qf[:,self.ref] = geq * linalg_qf[:,self.ref]
 
         return [linalg_qf, linalg_bf, linalg_b]
+
+    def get_dy(self, x, sys):
+        return sys

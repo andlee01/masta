@@ -5,6 +5,19 @@ import numpy as np
 sys.path.append("../devices")
 from base_devices import ElementType, TwoPortElement
 
+class Scoreboard:
+
+    def __init__(self, num_edges, num_sys_vars, degen_mtrx):
+        self.v          = np.zeros(num_edges)
+        self.i          = np.zeros(num_edges)
+        self.x          = np.zeros(num_edges)
+        self.sys        = np.zeros(num_sys_vars)
+        self.t          = 0
+        self.dv         = np.zeros(num_edges)
+        self.di         = np.zeros(num_edges)
+        self.degen_mtrx = degen_mtrx
+
+
 class Circuit:
 
     def __init__(self):
@@ -49,31 +62,65 @@ class Circuit:
 
         return -1
 
-    def get_im(self, x, t):
+    def get_im(self, x, sys, t):
 
-        I = np.zeros(self.num_edges)
-
-        for (u,v,d) in self.G.edges(data=True):
-            I[d['info'].get_ref()] = d['info'].get_current(x=x, t=t)
-
-        return I
-
-    def get_vm(self, x, t):
-
-        V = np.zeros(self.num_edges)
+        self.scb.i   = np.zeros(self.num_edges)
+        self.scb.x   = x
+        self.scb.sys = sys
+        self.scb.t   = t
 
         for (u,v,d) in self.G.edges(data=True):
-            V[d['info'].get_ref()] = d['info'].get_voltage(x=x, t=t)
+            self.scb.i[d['info'].get_ref()] = d['info'].get_current(self.scb)
 
-        return V
+        return self.scb.i
+
+    def get_degen(self):
+
+        for (u,v,d) in self.G.edges(data=True):
+
+            if d['info'].get_degen_ref() != -1:
+                self.scb.i[d['info'].get_degen_ref()] = d['info'].get_degen_current(self.scb)
+        return self.scb.i
+
+    def get_vm(self, x, sys, t):
+
+        self.scb.v = np.zeros(self.num_edges)
+
+        for (u,v,d) in self.G.edges(data=True):
+            self.scb.v[d['info'].get_ref()] = d['info'].get_voltage(self.scb)
+
+        self.get_ddt_vm(x=x, sys=sys, t=t)
+
+        return self.scb.v
+
+    def get_ddt_vm(self, x, sys, t):
+
+        self.scb.dv = np.zeros(self.num_edges)
+
+        for (u,v,d) in self.spanning_tree.edges(data=True):
+            edge = d['info']
+
+            if edge.get_type() == ElementType.capacitor:
+                self.scb.dv[d['info'].ref] = x[d['info'].ref] / d['info'].value
+            elif edge.get_type() == ElementType.voltage_src:
+                self.scb.dv[d['info'].ref] = 0.0
+            else:
+                print ("Should be here")
+
+    def get_dy(self, x):
+
+        dy = np.zeros(self.num_sys_vars)
+
+        for (u,v,d) in self.G.edges(data=True):
+            dy = d['info'].get_dy(x=x, sys=dy)
+
+        return dy
 
     def get_linalg_mtrx(self, x, sys, t):
 
         linalg_qf = self.qf.copy()
         linalg_bf = self.bf.copy()
         linalg_b  = np.zeros(self.num_edges)
-
-        #print(linalg_qf)
 
         for (u,v,d) in self.G.edges(data=True):
             [linalg_qf, linalg_bf, linalg_b] = d['info'].upd_linalg_mtrx(x=x, sys=sys, t=t, linalg_qf=linalg_qf, linalg_bf=linalg_bf, linalg_b=linalg_b)
@@ -320,6 +367,73 @@ class Circuit:
                             else:
                                 self.bf[co_tree_edge_ref][spanning_tree_edge_ref] = -1
 
+    # Each edge has a unique ref. Capacitors and inductors that are members of the spanning-tree
+    # and co-tree respectively are system variables. Assign these branches a unique sys_var_ref.
+    # Since capacitors and inductors which are system variables are evaluated as part of distinct
+    # matrices (Qf and Bf), the references both start at zero.
+    def set_sys_var_ref(self):
+
+        sys_var_cap_ref = 0
+        sys_var_ind_ref = 0
+
+        for (u,v,d) in self.spanning_tree.edges(data=True):
+            edge = d['info']
+
+            if edge.get_type() == ElementType.capacitor:
+                edge.set_sys_var(ref=sys_var_cap_ref)
+                sys_var_cap_ref  += 1
+
+        for (u,v,d) in self.co_tree.edges(data=True):
+            edge = d['info']
+
+            if edge.get_type() == ElementType.inductor:
+                edge.set_sys_var(ref=(sys_var_cap_ref + sys_var_ind_ref) )
+                sys_var_ind_ref  += 1
+
+        self.num_sys_var_cap = sys_var_cap_ref
+        self.num_sys_var_ind = sys_var_ind_ref
+
+        self.num_sys_vars = self.num_sys_var_cap + self.num_sys_var_ind
+
+    def set_denerate_ref(self):
+
+        degen_ref = 0
+
+        self.degen_mtrx = np.zeros((self.num_edges, self.num_edges))
+
+        for (u,v,d) in self.co_tree.edges(data=True):
+            edge = d['info']
+
+            if edge.get_type() == ElementType.capacitor:
+                edge.set_degen_ref(ref=self.num_edges)
+                degen_ref += 1
+                edge_ref   = edge.get_ref()
+
+                # Add additional row/column to Qf, Bf and degen
+                self.qf = np.vstack([self.qf, np.zeros( self.qf.shape[0])])
+                self.qf = np.hstack((self.qf, np.zeros((self.qf.shape[0], 1))))
+
+                self.bf = np.vstack([self.bf, np.zeros( self.bf.shape[0])])
+                self.bf = np.hstack((self.bf, np.zeros((self.bf.shape[0], 1))))
+
+                self.degen_mtrx = np.vstack([self.degen_mtrx, np.zeros( self.degen_mtrx.shape[0])])
+                self.degen_mtrx = np.hstack((self.degen_mtrx, np.zeros((self.degen_mtrx.shape[0], 1))))
+
+                # Update Qf for degen
+                self.qf[self.num_edges][edge_ref]       = 1
+                self.qf[self.num_edges][self.num_edges] = -1
+
+                # Update degen matrix
+                self.degen_mtrx[edge_ref,:] = self.bf[edge_ref,:]
+
+                # Mask Bf equation
+                self.bf[edge_ref,:] = np.zeros(self.bf.shape[0])
+
+                self.num_edges += 1
+
+    def get_num_sys_vars(self):
+        return self.num_sys_vars
+
     def init_circuit(self):
         self.consistency_check()
         self.chk_linear_ind_dep()
@@ -327,3 +441,7 @@ class Circuit:
         self.get_co_tree()
         self.get_qf_matrix()
         self.get_bf_matrix()
+        self.set_sys_var_ref()
+        self.set_denerate_ref()
+
+        self.scb = Scoreboard(num_edges=self.num_edges, num_sys_vars=self.num_sys_vars, degen_mtrx=self.degen_mtrx)
