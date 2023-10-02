@@ -181,13 +181,13 @@ class voltage_src(TwoPortElement):
 
 class current_src(TwoPortElement):
 
-    def get_voltage(self, x, sys, t, bf, vm_sys):
-        return x[self.ref]
+    def get_voltage(self, scb):
+        return scb.x[self.ref]
 
-    def get_current(self, x, sys, t, bf, vm_sys_dy):
+    def get_current(self, scb):
         return self.value
 
-    def get_degen_current(self, x, sys, t, bf, vm_sys_dy):
+    def get_degen_current(self, scb):
         return
 
     def get_weight(self):
@@ -266,16 +266,16 @@ class vccs_l1_mosfet(TwoPortElement):
 
         return id
 
-    def get_voltage(self, x, sys, t, bf, vm_sys):
-        return x[self.ref]
+    def get_voltage(self, scb):
+        return scb.x[self.ref]
 
     def get_degen_current(self, x, sys, t, bf, vm_sys_dy):
         return
 
-    def get_current(self, x, sys, t, bf, vm_sys_dy):
+    def get_current(self, scb):
 
-        self.vds = x[self.ref]
-        self.vgs = x[self.vgs_ref]
+        self.vds = scb.x[self.ref]
+        self.vgs = scb.x[self.vgs_ref]
 
         if self.check_tri():
             return self.tri()

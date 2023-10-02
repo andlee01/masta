@@ -105,7 +105,9 @@ class Circuit:
             elif edge.get_type() == ElementType.voltage_src:
                 self.scb.dv[d['info'].ref] = 0.0
             else:
-                print ("Should be here")
+                # Other types of element can be members of the spanning tree, but only for
+                # the case of voltage-capacitor loops is the edge voltage derivative required.
+                self.scb.dv[d['info'].ref] = 0.0
 
     def get_dy(self, x):
 
@@ -193,8 +195,10 @@ class Circuit:
 
                 inductor   = edge_info.get_type() == ElementType.inductor
 
-                indep_isrc = (edge_info.get_type()      == ElementType.current_src) and \
-                             (edge_info.get_dependant() == False)
+                #indep_isrc = (edge_info.get_type()      == ElementType.current_src) and \
+                #             (edge_info.get_dependant() == False)
+
+                indep_isrc = (edge_info.get_type()      == ElementType.current_src)
 
                 if not inductor and not indep_isrc:
                     isrc_ind_node = False

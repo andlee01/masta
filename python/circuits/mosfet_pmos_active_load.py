@@ -1,7 +1,7 @@
 import sys, getopt, re, shutil, os, pprint, networkx as nx
 
 sys.path.append("../eqn")
-from eqn_syn import Circuit
+from eqn_syn import Circuit, Scoreboard
 
 sys.path.append("../devices")
 from base_devices import ElementType, TwoPortElement
@@ -114,10 +114,10 @@ def circuit_eqn(x, ckt, iref):
     ckt.set_value(ref=iref_n_ref, value=(20e-6 - iref))
 
     # current Im
-    I = ckt.get_im(x=x, t=0)
+    I = ckt.get_im(x=x, sys=0, t=0)
 
     # voltage Vm
-    V = ckt.get_vm(x=x, t=0)
+    V = ckt.get_vm(x=x, sys=0, t=0)
 
     # Copy matrices
     qf_num = ckt.qf.copy()
@@ -148,6 +148,8 @@ def main():
     isg_pmos_vref = np.zeros(2)
     isd_pmos_vref = np.zeros(2)
 
+    scb = Scoreboard(num_edges=ckt.num_edges, num_sys_vars=ckt.num_sys_vars, degen_mtrx=ckt.degen_mtrx)
+
     for idx, iref in enumerate(iref_sweep):
         root       = optimize.root(circuit_eqn, root_start, args=(ckt, iref), tol=1e-9)
         root_start = root.x
@@ -155,21 +157,24 @@ def main():
         if not root.success:
             sys.exit()
 
+        scb.x = root.x
+        scb.t = 0
+
         iref_p_ref = ckt.get_ref_from_instance("iref_p")
         iref_edge = ckt.get_edge_info(iref_p_ref)
-        v_iref_p[idx] = iref_edge.get_voltage(x=root.x, t=0)
+        v_iref_p[idx] = iref_edge.get_voltage(scb=scb)
 
         iref_n_ref = ckt.get_ref_from_instance("iref_n")
         iref_edge = ckt.get_edge_info(iref_n_ref)
-        v_iref_n[idx] = iref_edge.get_voltage(x=root.x, t=0)
+        v_iref_n[idx] = iref_edge.get_voltage(scb=scb)
 
         # Limits
         if idx == 0:
-            isg_pmos_vref[0] = ckt.get_edge_info(5).get_voltage(x=root.x, t=0)
-            isd_pmos_vref[0] = ckt.get_edge_info(4).get_voltage(x=root.x, t=0)
+            isg_pmos_vref[0] = ckt.get_edge_info(5).get_voltage(scb=scb)
+            isd_pmos_vref[0] = ckt.get_edge_info(4).get_voltage(scb=scb)
         elif idx == len(iref_sweep)-1:
-            isg_pmos_vref[1] = ckt.get_edge_info(5).get_voltage(x=root.x, t=0)
-            isd_pmos_vref[1] = ckt.get_edge_info(4).get_voltage(x=root.x, t=0)
+            isg_pmos_vref[1] = ckt.get_edge_info(5).get_voltage(scb=scb)
+            isd_pmos_vref[1] = ckt.get_edge_info(4).get_voltage(scb=scb)
 
     fig, ax1 = plt.subplots()
 
@@ -207,7 +212,8 @@ def main():
         for vds_idx, vds in enumerate(vds_sweep):
 
             x = [vds, vsg]
-            i_sd_p1[vsg_idx][vds_idx] = isd.get_current(x=x, t=0)
+            scb.x = x
+            i_sd_p1[vsg_idx][vds_idx] = isd.get_current(scb=scb)
 
         if vsg_idx == 0:
             color = "red"
