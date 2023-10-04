@@ -119,6 +119,9 @@ def circuit_eqn(x, ckt, iref):
     # voltage Vm
     V = ckt.get_vm(x=x, sys=0, t=0)
 
+    # get dependent currents
+    I = ckt.get_im_dep()
+
     # Copy matrices
     qf_num = ckt.qf.copy()
     bf_num = ckt.bf.copy()
@@ -137,7 +140,7 @@ def main():
 
     ckt.init_circuit()
 
-    root_start = np.ones(7)
+    root_start = np.ones(ckt.num_edges)
     vs          = 5.0
     iref_delta  = 0.1e-6
     iref_sweep  = np.linspace(-iref_delta, iref_delta, 1000)
@@ -155,6 +158,7 @@ def main():
         root_start = root.x
 
         if not root.success:
+            print (root.x)
             sys.exit()
 
         scb.x = root.x
@@ -187,6 +191,7 @@ def main():
     ax1.legend()
 
     plt.savefig("../../doc/mosfet_pmos_active_load_viref.svg", bbox_inches = 'tight')
+    #plt.show(block=False)
 
     # Limits
     # ------
@@ -212,8 +217,8 @@ def main():
         for vds_idx, vds in enumerate(vds_sweep):
 
             x = [vds, vsg]
-            scb.x = x
-            i_sd_p1[vsg_idx][vds_idx] = isd.get_current(scb=scb)
+            scb.v = x
+            i_sd_p1[vsg_idx][vds_idx] = isd.get_dependent_current(scb=scb)
 
         if vsg_idx == 0:
             color = "red"
@@ -229,6 +234,7 @@ def main():
         ax1.legend()
 
     plt.savefig("../../doc/mosfet_pmos_active_load_iref.svg", bbox_inches = 'tight')
+    #plt.show()
 
 if __name__ == "__main__":
 

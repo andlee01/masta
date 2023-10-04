@@ -70,7 +70,18 @@ class Circuit:
         self.scb.t   = t
 
         for (u,v,d) in self.G.edges(data=True):
-            self.scb.i[d['info'].get_ref()] = d['info'].get_current(self.scb)
+            if d['info'].i_d_ref != -1:
+                self.scb.i[d['info'].i_x_ref] = d['info'].get_current(self.scb)
+            else:
+                self.scb.i[d['info'].get_ref()] = d['info'].get_current(self.scb)
+
+        return self.scb.i
+
+    def get_im_dep(self):
+
+        for (u,v,d) in self.G.edges(data=True):
+            if d['info'].i_d_ref != -1:
+                self.scb.i[d['info'].i_d_ref] = d['info'].get_dependent_current(self.scb)
 
         return self.scb.i
 
@@ -447,5 +458,8 @@ class Circuit:
         self.get_bf_matrix()
         self.set_sys_var_ref()
         self.set_denerate_ref()
+
+        for (u,v,d) in self.G.edges(data=True):
+            d['info'].set_dependencies(self)
 
         self.scb = Scoreboard(num_edges=self.num_edges, num_sys_vars=self.num_sys_vars, degen_mtrx=self.degen_mtrx)

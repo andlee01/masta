@@ -145,10 +145,13 @@ def circuit_eqn(x, ckt, vgs_1):
     ckt.set_value(ref=vgs_1_ref, value=vgs_1)
 
     # current Im
-    I = ckt.get_im(x=x, t=0)
+    I = ckt.get_im(x=x, sys=0, t=0)
 
     # voltage Vm
-    V = ckt.get_vm(x=x, t=0)
+    V = ckt.get_vm(x=x, sys=0, t=0)
+
+    # get dependent currents
+    I = ckt.get_im_dep()
 
     # Copy matrices
     qf_num = ckt.qf.copy()

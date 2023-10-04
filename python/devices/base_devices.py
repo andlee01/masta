@@ -17,8 +17,73 @@ class TwoPortElement(ABC):
         self.value       = 0.0
         self.type        = ElementType.undefined
         self.sys_var     = False
+
+        # Edge reference in circuit
+        self.ref         = -1
+
+        # System variable reference
+        #  - set to -1 if edge is not a system variable
         self.sys_var_ref = -1
+
+        # Degeneration edge reference
+        #  - Additional variable inserted into the circuit to constrain the
+        #    current of a dependent capacitor or the voltage of a dependent
+        #    inductor
         self.degen_ref   = -1
+
+        # Dependent sources
+        # -----------------
+        # An independent voltage source adds 1 variable into the system equations.
+        # This variable corresponds to the edge current.
+        # The edge voltage is a function of time only.
+        #
+        # An independent current source adds 1 variable into the system equations.
+        # This variable corresponds to the edge voltage.
+        # The edge current is a function of time only.
+        #
+        # A dependent current source adds 3 variables into the system equations.
+        # The first variable is the edge voltage.
+        # The second variable is the edge current.
+        # The third variable is the edge current constraint and is calculated from
+        # the guess edge voltages and currents.
+        #
+        # The solver flow is as follows:
+        # 1. Each edge calculates its current using the current value of x and sys
+        #    only.
+        #
+        #      - An independent current source calculates its current based on t
+        #        and updates I[ref].
+        #      - A dependent current source updates I[i_d_ref] = x[i_d_ref].
+        #
+        # 2. Each edge calculates its voltage using the current value of x and sys
+        #    only.
+        #
+        #      - All current sources updates V[ref] = x[ref].
+        #
+        # 3. Dependent current sources calculate their dependent current values using
+        #    the I and V vector from steps 1. and 2. only.
+        #
+        #      - Dependent current sources calculate the dependent current using V and I
+        #        and updates I[i_x_ref] = f(V, I)
+        #
+        # 4. For every dependent source an equation is inserted that into the system of equations
+        #    that asserts that I[i_d_ref] = I[i_x_ref]. This constrains the guessed value of a
+        #    dependent current source to be equal to the true, dependent value.
+        #
+        # By following the above steps, potential problems of circular dependency are avoided.
+        # For example, if I2 = f(V1) and V1 = f(I1) then I2 cannot calculate its value until V1 is
+        # known, but V1 cannot calculate its value intil I1 is known. The additional, inserted
+        # variables break this loop.
+
+        # Dependent variable reference
+        #  - Guessed current for a dependent current source or voltage for a
+        #    dependent voltage source
+        self.i_d_ref     = -1
+
+        # An additional constraint variable that's inserted alongside i_d_ref
+        #  - Calculates the dependent true value based on the guessed voltages
+        #    and currents
+        self.i_x_ref     = -1
 
     def set_value(self, value):
         self.value = value
@@ -49,11 +114,19 @@ class TwoPortElement(ABC):
         return self.degen_ref
 
     @abstractmethod
+    def set_dependencies(self, ckt):
+        pass
+
+    @abstractmethod
     def get_voltage(self, scb):
         pass
 
     @abstractmethod
     def get_current(self, scb):
+        pass
+
+    @abstractmethod
+    def get_dependent_current(self, scb):
         pass
 
     @abstractmethod
@@ -82,7 +155,13 @@ class resistor(TwoPortElement):
     def get_current(self, scb):
         return scb.x[self.ref]
 
+    def get_dependent_current(self, scb):
+        return 0.0
+
     def get_degen_current(self, scb):
+        return
+
+    def set_dependencies(self, ckt):
         return
 
     def get_weight(self):
@@ -104,10 +183,20 @@ class capacitor(TwoPortElement):
 
         # non sys-var cap
         #  - Voltage is dependent variable and not solved for
-        return 0
+        bf_loop = scb.degen_mtrx[self.ref,:].copy()
+        bf_loop[self.ref] = 0
+
+        # i = C *ddt(V)
+        # Multiply by -1 to account for moving of ddt to RHS
+        #  - i.e. Vc1 + Vc2 + V = 0
+        #                     V = -1 * ( Vc1 + Vc2 )
+        return -1 * np.dot(bf_loop, scb.v)
 
     def get_current(self, scb):
         return scb.x[self.ref]
+
+    def get_dependent_current(self, scb):
+        return 0.0
 
     def get_degen_current(self, scb):
 
@@ -119,6 +208,9 @@ class capacitor(TwoPortElement):
         #  - i.e. ddt(Vc1) + ddt(Vc2) + ddt(V) = 0
         #                               ddt(V) = -1 * ( ddt(Vc1) + ddt(Vc2) )
         return -1 * np.dot(bf_loop, scb.dv) * self.value
+
+    def set_dependencies(self, ckt):
+        return
 
     def get_weight(self):
         return 0
@@ -141,7 +233,13 @@ class inductor(TwoPortElement):
     def get_current(self, scb):
         return scb.sys[self.sys_var_ref]
 
+    def get_dependent_current(self, scb):
+        return 0.0
+
     def get_degen_current(self, scb):
+        return
+
+    def set_dependencies(self, ckt):
         return
 
     def get_weight(self):
@@ -163,7 +261,16 @@ class voltage_src(TwoPortElement):
     def get_current(self, scb):
         return scb.x[self.ref]
 
+    def get_dependent_current(self, scb):
+        return 0.0
+
     def get_degen_current(self, scb):
+        return
+
+    def set_dependencies(self, ckt):
+        return
+
+    def set_dependencies(self, ckt):
         return
 
     def get_weight(self):
@@ -187,7 +294,13 @@ class current_src(TwoPortElement):
     def get_current(self, scb):
         return self.value
 
+    def get_dependent_current(self, scb):
+        return 0.0
+
     def get_degen_current(self, scb):
+        return
+
+    def set_dependencies(self, ckt):
         return
 
     def get_weight(self):
@@ -273,9 +386,12 @@ class vccs_l1_mosfet(TwoPortElement):
         return
 
     def get_current(self, scb):
+        return scb.x[self.i_x_ref]
 
-        self.vds = scb.x[self.ref]
-        self.vgs = scb.x[self.vgs_ref]
+    def get_dependent_current(self, scb):
+
+        self.vds = scb.v[self.ref]
+        self.vgs = scb.v[self.vgs_ref]
 
         if self.check_tri():
             return self.tri()
@@ -283,7 +399,6 @@ class vccs_l1_mosfet(TwoPortElement):
             return self.sat()
         else:
             return (1e-9 * self.vds)
-            return 0.0
 
     def get_region(self, x):
 
@@ -299,6 +414,31 @@ class vccs_l1_mosfet(TwoPortElement):
 
     def get_weight(self):
         return 3
+
+    def set_dependencies(self, ckt):
+
+        self.i_x_ref = ckt.num_edges
+        self.i_d_ref = ckt.num_edges + 1
+
+        # Add additional row/column to Qf, Bf and degen
+        ckt.qf = np.vstack([ckt.qf, np.zeros( ckt.qf.shape[0])])
+        ckt.qf = np.hstack((ckt.qf, np.zeros((ckt.qf.shape[0], 1))))
+        ckt.qf = np.vstack([ckt.qf, np.zeros( ckt.qf.shape[0])])
+        ckt.qf = np.hstack((ckt.qf, np.zeros((ckt.qf.shape[0], 1))))
+
+        ckt.bf = np.vstack([ckt.bf, np.zeros( ckt.bf.shape[0])])
+        ckt.bf = np.hstack((ckt.bf, np.zeros((ckt.bf.shape[0], 1))))
+        ckt.bf = np.vstack([ckt.bf, np.zeros( ckt.bf.shape[0])])
+        ckt.bf = np.hstack((ckt.bf, np.zeros((ckt.bf.shape[0], 1))))
+
+        ckt.qf[:, self.i_x_ref] = ckt.qf[:, self.ref]
+        ckt.qf[:, self.ref]     = np.zeros(ckt.qf.shape[0])
+
+        # Update Qf for degen
+        ckt.qf[ckt.num_edges][self.i_x_ref]  = 1
+        ckt.qf[ckt.num_edges][self.i_d_ref] = -1
+
+        ckt.num_edges += 2
 
     def upd_linalg_mtrx(self, x, sys, t, linalg_qf, linalg_bf, linalg_b):
 
