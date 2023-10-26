@@ -54,6 +54,12 @@ class Circuit:
            if d['info'].ref == edge_ref:
                return d['info']
 
+    def get_edge_info_from_sys_var_ref(self, sys_var_ref):
+
+       for (u,v,d) in self.G.edges(data=True):
+           if d['info'].sys_var_ref == sys_var_ref:
+               return d['info']
+
     def get_ref_from_instance(self, instance):
 
         for (u,v,d) in self.G.edges(data=True):
@@ -70,18 +76,14 @@ class Circuit:
         self.scb.t   = t
 
         for (u,v,d) in self.G.edges(data=True):
-            if d['info'].i_d_ref != -1:
-                self.scb.i[d['info'].i_x_ref] = d['info'].get_current(self.scb)
-            else:
-                self.scb.i[d['info'].get_ref()] = d['info'].get_current(self.scb)
+            d['info'].get_current(self.scb)
 
         return self.scb.i
 
     def get_im_dep(self):
 
         for (u,v,d) in self.G.edges(data=True):
-            if d['info'].i_d_ref != -1:
-                self.scb.i[d['info'].i_d_ref] = d['info'].get_dependent_current(self.scb)
+            d['info'].get_dependent_current(self.scb)
 
         return self.scb.i
 
@@ -90,7 +92,8 @@ class Circuit:
         for (u,v,d) in self.G.edges(data=True):
 
             if d['info'].get_degen_ref() != -1:
-                self.scb.i[d['info'].get_degen_ref()] = d['info'].get_degen_current(self.scb)
+                d['info'].get_degen_current(self.scb)
+
         return self.scb.i
 
     def get_vm(self, x, sys, t):
@@ -98,23 +101,22 @@ class Circuit:
         self.scb.v = np.zeros(self.num_edges)
 
         for (u,v,d) in self.G.edges(data=True):
-            self.scb.v[d['info'].get_ref()] = d['info'].get_voltage(self.scb)
+            d['info'].get_voltage(self.scb)
 
-        self.get_ddt_vm(x=x, sys=sys, t=t)
+        self.get_ddt_vm()
 
         return self.scb.v
 
-    def get_ddt_vm(self, x, sys, t):
+    def get_ddt_vm(self):
 
         self.scb.dv = np.zeros(self.num_edges)
 
         for (u,v,d) in self.spanning_tree.edges(data=True):
             edge = d['info']
 
-            if edge.get_type() == ElementType.capacitor:
-                self.scb.dv[d['info'].ref] = x[d['info'].ref] / d['info'].value
-            elif edge.get_type() == ElementType.voltage_src:
-                self.scb.dv[d['info'].ref] = 0.0
+            if edge.get_type() == ElementType.capacitor or \
+               edge.get_type() == ElementType.voltage_src:
+               edge.get_ddt(self.scb)
             else:
                 # Other types of element can be members of the spanning tree, but only for
                 # the case of voltage-capacitor loops is the edge voltage derivative required.

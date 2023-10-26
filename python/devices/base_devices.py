@@ -126,6 +126,10 @@ class TwoPortElement(ABC):
         pass
 
     @abstractmethod
+    def get_ddt(self, scb):
+        pass
+
+    @abstractmethod
     def get_dependent_current(self, scb):
         pass
 
@@ -138,10 +142,6 @@ class TwoPortElement(ABC):
         pass
 
     @abstractmethod
-    def upd_linalg_mtrx(self, x, sys, t, linalg_qf, linalg_bf, linalg_b):
-        pass
-
-    @abstractmethod
     def get_weight(self):
         pass
 
@@ -150,10 +150,10 @@ class resistor(TwoPortElement):
     # sys vector variable is current through resistor
     #  - V = i * R
     def get_voltage(self, scb):
-        return scb.x[self.ref] * self.value
+        scb.v[self.ref] = scb.x[self.ref] * self.value
 
     def get_current(self, scb):
-        return scb.x[self.ref]
+        scb.i[self.ref] = scb.x[self.ref]
 
     def get_dependent_current(self, scb):
         return 0.0
@@ -170,7 +170,7 @@ class resistor(TwoPortElement):
     def get_dy(self, x, sys):
         return sys
 
-    def upd_linalg_mtrx(self, x, sys, t, linalg_qf, linalg_bf, linalg_b):
+    def get_ddt(self, scb):
         return
 
 
@@ -179,7 +179,9 @@ class capacitor(TwoPortElement):
     def get_voltage(self, scb):
 
         if self.sys_var_ref != -1:
-            return scb.sys[self.sys_var_ref]
+            scb.v[self.ref] = scb.sys[self.sys_var_ref]
+
+            return
 
         # non sys-var cap
         #  - Voltage is dependent variable and not solved for
@@ -190,10 +192,10 @@ class capacitor(TwoPortElement):
         # Multiply by -1 to account for moving of ddt to RHS
         #  - i.e. Vc1 + Vc2 + V = 0
         #                     V = -1 * ( Vc1 + Vc2 )
-        return -1 * np.dot(bf_loop, scb.v)
+        scb.v[self.ref] = -1 * np.dot(bf_loop, scb.v)
 
     def get_current(self, scb):
-        return scb.x[self.ref]
+        scb.i[self.ref] = scb.x[self.ref]
 
     def get_dependent_current(self, scb):
         return 0.0
@@ -207,7 +209,7 @@ class capacitor(TwoPortElement):
         # Multiply by -1 to account for moving of ddt to RHS
         #  - i.e. ddt(Vc1) + ddt(Vc2) + ddt(V) = 0
         #                               ddt(V) = -1 * ( ddt(Vc1) + ddt(Vc2) )
-        return -1 * np.dot(bf_loop, scb.dv) * self.value
+        scb.i[self.degen_ref] = -1 * np.dot(bf_loop, scb.dv) * self.value
 
     def set_dependencies(self, ckt):
         return
@@ -216,22 +218,21 @@ class capacitor(TwoPortElement):
         return 0
 
     def get_dy(self, x, sys):
-
         if self.sys_var_ref != -1:
             sys[self.sys_var_ref] = x[self.ref] / self.value
 
         return sys
 
-    def upd_linalg_mtrx(self, x, sys, t, linalg_qf, linalg_bf, linalg_b):
-        return
+    def get_ddt(self, scb):
+        scb.dv[self.ref] = scb.x[self.ref] / self.value
 
 class inductor(TwoPortElement):
 
     def get_voltage(self, scb):
-        return scb.x[self.ref]
+        scb.v[self.ref] = scb.x[self.ref]
 
     def get_current(self, scb):
-        return scb.sys[self.sys_var_ref]
+        scb.i[self.ref] = scb.sys[self.sys_var_ref]
 
     def get_dependent_current(self, scb):
         return 0.0
@@ -250,16 +251,30 @@ class inductor(TwoPortElement):
 
         return sys
 
-    def upd_linalg_mtrx(self, x, sys, t, linalg_qf, linalg_bf, linalg_b):
+    def get_ddt(self, scb):
         return
 
 class voltage_src(TwoPortElement):
 
+    def __init__(self, ramp=False, ramp_ddt=1e6):
+        TwoPortElement.__init__(self)
+
+        self.ramp     = ramp
+        self.ramp_ddt = ramp_ddt
+
     def get_voltage(self, scb):
-        return self.value
+
+        if self.ramp:
+            vin = self.ramp_ddt * scb.t
+            if vin > self.value:
+                vin = self.value
+        else:
+            vin = self.value
+
+        scb.v[self.ref] = vin
 
     def get_current(self, scb):
-        return scb.x[self.ref]
+        scb.i[self.ref] = scb.x[self.ref]
 
     def get_dependent_current(self, scb):
         return 0.0
@@ -276,23 +291,23 @@ class voltage_src(TwoPortElement):
     def get_weight(self):
         return 0
 
-    def upd_linalg_mtrx(self, x, sys, t, linalg_qf, linalg_bf, linalg_b):
-
-        linalg_b             += -1 * self.get_voltage(x=x, t=t) * linalg_bf[:,self.ref]
-        linalg_bf[:,self.ref] = 0
-
-        return [linalg_qf, linalg_bf, linalg_b]
-
     def get_dy(self, x, sys):
         return sys
+
+    def get_ddt(self, scb):
+
+        if scb.v[self.ref] < self.value:
+            scb.dv[self.ref] = self.ramp_ddt
+        else:
+            scb.dv[self.ref] = 0
 
 class current_src(TwoPortElement):
 
     def get_voltage(self, scb):
-        return scb.x[self.ref]
+        scb.v[self.ref] = scb.x[self.ref]
 
     def get_current(self, scb):
-        return self.value
+        scb.i[self.ref] = self.value
 
     def get_dependent_current(self, scb):
         return 0.0
@@ -306,15 +321,11 @@ class current_src(TwoPortElement):
     def get_weight(self):
         return 3
 
-    def upd_linalg_mtrx(self, x, sys, t, linalg_qf, linalg_bf, linalg_b):
-
-        linalg_b             += -1 * self.get_current(x=x, t=t) * linalg_qf[:,self.ref]
-        linalg_qf[:,self.ref] = 0
-
-        return [linalg_qf, linalg_bf, linalg_b]
-
     def get_dy(self, x, sys):
         return sys
+
+    def get_ddt(self, scb):
+        return
 
 class vccs_l1_mosfet(TwoPortElement):
 
@@ -380,13 +391,13 @@ class vccs_l1_mosfet(TwoPortElement):
         return id
 
     def get_voltage(self, scb):
-        return scb.x[self.ref]
+        scb.v[self.ref] = scb.x[self.ref]
 
     def get_degen_current(self, x, sys, t, bf, vm_sys_dy):
         return
 
     def get_current(self, scb):
-        return scb.x[self.i_x_ref]
+        scb.i[self.i_x_ref] = scb.x[self.i_x_ref]
 
     def get_dependent_current(self, scb):
 
@@ -394,11 +405,11 @@ class vccs_l1_mosfet(TwoPortElement):
         self.vgs = scb.v[self.vgs_ref]
 
         if self.check_tri():
-            return self.tri()
+            scb.i[self.i_d_ref] = self.tri()
         elif self.check_sat():
-            return self.sat()
+            scb.i[self.i_d_ref] = self.sat()
         else:
-            return (1e-9 * self.vds)
+            scb.i[self.i_d_ref] = (1e-9 * self.vds)
 
     def get_region(self, x):
 
@@ -440,25 +451,8 @@ class vccs_l1_mosfet(TwoPortElement):
 
         ckt.num_edges += 2
 
-    def upd_linalg_mtrx(self, x, sys, t, linalg_qf, linalg_bf, linalg_b):
-
-        v_step = 1e-3
-
-        x_upper = x + v_step
-        val_upper = self.get_current(x=x_upper, t=t)
-
-        x_lower = x - v_step
-        val_lower = self.get_current(x=x_lower, t=t)
-
-        geq = (val_upper - val_lower) / (2 * v_step)
-
-        f_idc = self.get_current(x=x, t=t)
-        ieq   = f_idc - geq * x[self.ref]
-
-        linalg_b             += -1 * ieq * linalg_qf[:,self.ref]
-        linalg_qf[:,self.ref] = geq * linalg_qf[:,self.ref]
-
-        return [linalg_qf, linalg_bf, linalg_b]
-
     def get_dy(self, x, sys):
         return sys
+
+    def get_ddt(self, scb):
+        return

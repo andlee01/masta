@@ -70,7 +70,7 @@ def add_pmos(g, d, s, KP, vth, l_lambda, L, W, ckt):
 
     isd.set_vgs_ref(vgs_ref=vgs_ref)
 
-def add_circuit(ckt):
+def add_circuit(ckt, rser):
 
     Vs_val = 1.0
     C2_val = 1e-9
@@ -80,15 +80,13 @@ def add_circuit(ckt):
     R2_val = 1e3
     R3_val = 1e-3
 
-    rser = False
-
     if (rser):
         v_node = 4
     else:
         v_node = 1
 
     #Add Vs
-    Vs = voltage_src()
+    Vs = voltage_src(ramp=True, ramp_ddt=1e6)
     Vs.set_type(ElementType.voltage_src)
     Vs.set_value(Vs_val)
     Vs.set_instance("Vs")
@@ -136,17 +134,17 @@ def add_circuit(ckt):
         R3.set_instance("R3")
         ckt.add_edge(v_node, 1, R3)
 
-def circuit_eqn(x, sys, ckt, vs):
+def circuit_eqn(x, sys, ckt, vs, t):
 
     # set Vs
-    vs_ref = ckt.get_ref_from_instance("Vs")
-    ckt.set_value(ref=vs_ref, value=vs)
+    #vs_ref = ckt.get_ref_from_instance("Vs")
+    #ckt.set_value(ref=vs_ref, value=vs)
 
     # current Im
-    I = ckt.get_im(x=x, sys=sys, t=0)
+    I = ckt.get_im(x=x, sys=sys, t=t)
 
     # voltage Vm
-    V = ckt.get_vm(x=x, sys=sys, t=0)
+    V = ckt.get_vm(x=x, sys=sys, t=t)
 
     I = ckt.get_degen()
 
@@ -164,7 +162,7 @@ def dypc_litmus0(t, sys, ckt):
     root_start = np.ones(ckt.num_edges)
     vs = 1
 
-    root = optimize.root(circuit_eqn, root_start, args=(sys, ckt, vs), tol=1e-9)
+    root = optimize.root(circuit_eqn, root_start, args=(sys, ckt, vs, t), tol=1e-7)
     root_start = root.x
     if not root.success:
         print (root.x)
@@ -201,14 +199,62 @@ def ode_solve(ckt):
 def main():
 
     ckt = Circuit()
-    add_circuit(ckt)
+
+    rser = True
+
+    add_circuit(ckt, rser)
 
     ckt.init_circuit()
 
     y = ode_solve(ckt)
 
     fig, ax1 = plt.subplots()
-    ax1.plot(y)
+    ax2 = ax1.twinx()
+
+    tstep = 10000
+    t     = np.linspace(0, 50e-6, tstep)
+
+    for sys_var in range(len(y[0,:])):
+
+        inst = str(ckt.get_edge_info_from_sys_var_ref(sys_var).instance)
+
+        if inst[0] == "C":
+            l = "$V_{" + inst + "}$"
+            ax1.plot(t, y[:,sys_var], label=l)
+        else:
+            l = "$i_{" + inst + "}$"
+            ax2.plot(t, y[:,sys_var], label=l, linestyle="dotted")
+
+    if rser == False:
+
+        VC3   = np.zeros(len(t))
+
+        for idx in range(len(t)):
+            for sys_var in range(len(y[0,:])):
+                ckt.scb.v[ckt.get_edge_info_from_sys_var_ref(sys_var).ref] = y[idx, sys_var]
+            ckt.scb.v[0] = 1.0
+
+            C3 = ckt.get_edge_info(ckt.get_ref_from_instance("C3"))
+            C3.get_voltage(ckt.scb)
+            VC3[idx] = ckt.scb.v[ckt.get_edge_info(ckt.get_ref_from_instance("C3")).ref]
+
+        l = "$V_{C3}$"
+        ax1.plot(t, VC3, label=l)
+
+    ax1.legend()
+    ax2.legend(loc="lower right")
+
+    ax1.set_ylabel("$V (V)$")
+    ax1.set_xlabel("$t (S)$")
+
+    ax2.set_ylabel("$i (A)$")
+    ax2.set_xlabel("$t (S)$")
+
+    if rser == False:
+        plt.savefig("litmus0_rser0.png", bbox_inches = 'tight')
+    else:
+        plt.savefig("litmus0_rser1.png", bbox_inches = 'tight')
+
     plt.show()
 
 if __name__ == "__main__":

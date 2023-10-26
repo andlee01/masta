@@ -166,19 +166,24 @@ def main():
 
         iref_p_ref = ckt.get_ref_from_instance("iref_p")
         iref_edge = ckt.get_edge_info(iref_p_ref)
-        v_iref_p[idx] = iref_edge.get_voltage(scb=scb)
+        iref_edge.get_voltage(scb=scb)
+        v_iref_p[idx] = scb.v[iref_p_ref]
 
         iref_n_ref = ckt.get_ref_from_instance("iref_n")
         iref_edge = ckt.get_edge_info(iref_n_ref)
-        v_iref_n[idx] = iref_edge.get_voltage(scb=scb)
+        iref_edge.get_voltage(scb=scb)
+        v_iref_n[idx] = scb.v[iref_n_ref]
 
         # Limits
+        ckt.get_edge_info(5).get_voltage(scb=scb)
+        ckt.get_edge_info(4).get_voltage(scb=scb)
+
         if idx == 0:
-            isg_pmos_vref[0] = ckt.get_edge_info(5).get_voltage(scb=scb)
-            isd_pmos_vref[0] = ckt.get_edge_info(4).get_voltage(scb=scb)
+            isg_pmos_vref[0] = scb.v[5]
+            isd_pmos_vref[0] = scb.v[4]
         elif idx == len(iref_sweep)-1:
-            isg_pmos_vref[1] = ckt.get_edge_info(5).get_voltage(scb=scb)
-            isd_pmos_vref[1] = ckt.get_edge_info(4).get_voltage(scb=scb)
+            isg_pmos_vref[1] = scb.v[5]
+            isd_pmos_vref[1] = scb.v[4]
 
     fig, ax1 = plt.subplots()
 
@@ -191,7 +196,7 @@ def main():
     ax1.legend()
 
     plt.savefig("../../doc/mosfet_pmos_active_load_viref.svg", bbox_inches = 'tight')
-    #plt.show(block=False)
+    plt.show(block=False)
 
     # Limits
     # ------
@@ -206,6 +211,7 @@ def main():
 
     isd.set_ref(0)
     isd.set_vgs_ref(1)
+    isd.i_d_ref = 2
 
     vds_sweep  = np.linspace(0.2, 4.8, 1000)
     i_sd_p1    = np.zeros([len(isg_pmos_vref), len(vds_sweep)])
@@ -218,7 +224,8 @@ def main():
 
             x = [vds, vsg]
             scb.v = x
-            i_sd_p1[vsg_idx][vds_idx] = isd.get_dependent_current(scb=scb)
+            isd.get_dependent_current(scb=scb)
+            i_sd_p1[vsg_idx][vds_idx] = scb.i[2]
 
         if vsg_idx == 0:
             color = "red"
@@ -234,7 +241,7 @@ def main():
         ax1.legend()
 
     plt.savefig("../../doc/mosfet_pmos_active_load_iref.svg", bbox_inches = 'tight')
-    #plt.show()
+    plt.show()
 
 if __name__ == "__main__":
 
