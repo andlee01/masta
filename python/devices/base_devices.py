@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
+import math
+
 class ElementType(Enum):
     undefined   = 0
     resistor    = 1
@@ -422,6 +424,95 @@ class vccs_l1_mosfet(TwoPortElement):
             return 0
         else:
             return -1
+
+    def get_weight(self):
+        return 3
+
+    def set_dependencies(self, ckt):
+
+        self.i_x_ref = ckt.num_edges
+        self.i_d_ref = ckt.num_edges + 1
+
+        # Add additional row/column to Qf, Bf and degen
+        ckt.qf = np.vstack([ckt.qf, np.zeros( ckt.qf.shape[0])])
+        ckt.qf = np.hstack((ckt.qf, np.zeros((ckt.qf.shape[0], 1))))
+        ckt.qf = np.vstack([ckt.qf, np.zeros( ckt.qf.shape[0])])
+        ckt.qf = np.hstack((ckt.qf, np.zeros((ckt.qf.shape[0], 1))))
+
+        ckt.bf = np.vstack([ckt.bf, np.zeros( ckt.bf.shape[0])])
+        ckt.bf = np.hstack((ckt.bf, np.zeros((ckt.bf.shape[0], 1))))
+        ckt.bf = np.vstack([ckt.bf, np.zeros( ckt.bf.shape[0])])
+        ckt.bf = np.hstack((ckt.bf, np.zeros((ckt.bf.shape[0], 1))))
+
+        ckt.qf[:, self.i_x_ref] = ckt.qf[:, self.ref]
+        ckt.qf[:, self.ref]     = np.zeros(ckt.qf.shape[0])
+
+        # Update Qf for degen
+        ckt.qf[ckt.num_edges][self.i_x_ref]  = 1
+        ckt.qf[ckt.num_edges][self.i_d_ref] = -1
+
+        ckt.num_edges += 2
+
+    def get_dy(self, x, sys):
+        return sys
+
+    def get_ddt(self, scb):
+        return
+
+class vccs_l1_mosfet_small(TwoPortElement):
+
+    def ro(self):
+
+        vdssat = self.vgs - self.vth
+
+        idsat = (self.KP / 2) * (self.W / self.L) * vdssat**2
+
+        ro = 1 / (self.l_lambda * idsat)
+
+        return ro
+
+    # equation 9.22
+    def gm(self):
+        beta = self.KP * (self.W / self.L)
+
+        gm = math.sqrt(2 * beta * self.Ids)
+
+        return gm
+
+    def set_params(self, KP, vth, l_lambda, L, W):
+        self.KP       = KP
+        self.vth      = vth
+        self.l_lambda = l_lambda
+        self.L        = L
+        self.W        = W
+
+    def get_op(self, op):
+
+        self.Ids = op.i[self.i_x_ref]
+        self.vgs = op.v[self.vgs_ref]
+
+        self.gm       = self.gm()
+        self.ro       = self.ro()
+
+        return [self.gm, self.ro]
+
+    def set_vgs_ref(self, vgs_ref):
+        self.vgs_ref = vgs_ref
+
+    def get_voltage(self, scb):
+        scb.v[self.ref] = scb.x[self.ref]
+
+    def get_degen_current(self, x, sys, t, bf, vm_sys_dy):
+        return
+
+    def get_current(self, scb):
+        scb.i[self.i_x_ref] = scb.x[self.i_x_ref]
+
+    def get_dependent_current(self, scb):
+
+        self.vgs = scb.v[self.vgs_ref]
+
+        scb.i[self.i_d_ref] = self.gm * self.vgs
 
     def get_weight(self):
         return 3
