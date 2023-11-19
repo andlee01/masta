@@ -87,6 +87,22 @@ class TwoPortElement(ABC):
         #    and currents
         self.i_x_ref     = -1
 
+        # For LTI Circuits only
+        #  - Dependency reference for dependent source
+        self.src_dep_ref = -1
+
+        # For LTI Circuits only
+        #  - Voltage and current sources can be either:
+        #    1. Independent current/voltage sources
+        #    2. Dependent current/voltage sources
+        #    3. Constant valued current/voltage sources
+        #
+        #  - Only category 1. above is classed as an LTI system input
+        self.is_input = False
+
+        # Category 3
+        self.is_const = False
+
     def set_value(self, value):
         self.value = value
 
@@ -112,8 +128,32 @@ class TwoPortElement(ABC):
     def get_ref(self):
         return self.ref
 
+    def get_value(self):
+        return self.value
+
+    def get_sys_var_ref(self):
+        return self.sys_var_ref
+
     def get_degen_ref(self):
         return self.degen_ref
+
+    def set_src_dep_ref(self, ref):
+        self.src_dep_ref = ref
+
+    def get_src_dep_ref(self):
+        return self.src_dep_ref
+
+    def set_is_input(self):
+        self.is_input = True
+
+    def get_is_input(self):
+        return self.is_input
+
+    def set_is_const(self):
+        self.is_const = True
+
+    def get_is_const(self):
+        return self.is_const
 
     @abstractmethod
     def set_dependencies(self, ckt):
@@ -149,6 +189,11 @@ class TwoPortElement(ABC):
 
 class resistor(TwoPortElement):
 
+    def __init__(self, ramp=False, ramp_ddt=1e6):
+        TwoPortElement.__init__(self)
+
+        self.type = ElementType.resistor
+
     # sys vector variable is current through resistor
     #  - V = i * R
     def get_voltage(self, scb):
@@ -177,6 +222,11 @@ class resistor(TwoPortElement):
 
 
 class capacitor(TwoPortElement):
+
+    def __init__(self, ramp=False, ramp_ddt=1e6):
+        TwoPortElement.__init__(self)
+
+        self.type = ElementType.capacitor
 
     def get_voltage(self, scb):
 
@@ -230,6 +280,11 @@ class capacitor(TwoPortElement):
 
 class inductor(TwoPortElement):
 
+    def __init__(self, ramp=False, ramp_ddt=1e6):
+        TwoPortElement.__init__(self)
+
+        self.type = ElementType.inductor
+
     def get_voltage(self, scb):
         scb.v[self.ref] = scb.x[self.ref]
 
@@ -260,6 +315,8 @@ class voltage_src(TwoPortElement):
 
     def __init__(self, ramp=False, ramp_ddt=1e6):
         TwoPortElement.__init__(self)
+
+        self.type = ElementType.voltage_src
 
         self.ramp     = ramp
         self.ramp_ddt = ramp_ddt
@@ -304,6 +361,11 @@ class voltage_src(TwoPortElement):
             scb.dv[self.ref] = 0
 
 class current_src(TwoPortElement):
+
+    def __init__(self):
+        TwoPortElement.__init__(self)
+
+        self.type = ElementType.current_src
 
     def get_voltage(self, scb):
         scb.v[self.ref] = scb.x[self.ref]
@@ -461,6 +523,11 @@ class vccs_l1_mosfet(TwoPortElement):
 
 class vccs_l1_mosfet_small(TwoPortElement):
 
+    def __init__(self):
+        TwoPortElement.__init__(self)
+
+        self.type = ElementType.current_src
+
     def ro(self):
 
         vdssat = self.vgs - self.vth
@@ -547,3 +614,6 @@ class vccs_l1_mosfet_small(TwoPortElement):
 
     def get_ddt(self, scb):
         return
+
+    def get_value(self):
+        return self.gm

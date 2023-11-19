@@ -128,9 +128,15 @@ def add_circuit(ckt, rser):
     ckt.add_edge(2, 3, C3)
 
     # Add R2
-    R2 = resistor()
-    R2.set_type(ElementType.resistor)
-    R2.set_value(R2_val)
+    #R2 = resistor()
+    #R2.set_type(ElementType.resistor)
+    #R2.set_value(R2_val)
+    #R2.set_instance("R2")
+    #ckt.add_edge(3, 0, R2)
+
+    R2 = current_src()
+    R2.set_is_const()
+    R2.set_value(1.0)
     R2.set_instance("R2")
     ckt.add_edge(3, 0, R2)
 
@@ -166,10 +172,10 @@ def circuit_eqn(x, sys, ckt, vs, t):
 
 def dypc_litmus0(t, sys, ckt):
 
-    root_start = np.ones(ckt.num_edges)
+    root_start = np.zeros(ckt.num_edges)
     vs = 1
 
-    root = optimize.root(circuit_eqn, root_start, args=(sys, ckt, vs, t), tol=1e-7)
+    root = optimize.root(circuit_eqn, root_start, args=(sys, ckt, vs, t), tol=1e-3)
     root_start = root.x
     if not root.success:
         print (root.x)
@@ -203,113 +209,6 @@ def ode_solve(ckt):
 
     return y
 
-def extract_numeric_values(expression):
-    numeric_values = regex.findall(r'[-+]?\d+\.\d+', expression)
-    numeric_values = [float(value) for value in numeric_values]
-    return numeric_values
-
-def separate_numeric_non_numeric(input_string):
-    non_numeric_list = regex.findall(r'\b(?<!\d)(?<![a-zA-Z_])[a-zA-Z_]+[a-zA-Z0-9_]*\b', input_string)
-    return non_numeric_list
-
-#def extract_numeric_values(expression):
-#    numeric_values = regex.findall(r'-?\d+\.\d+|-?\d+(?![\w.])', expression)
-#    numeric_values = [float(value) for value in numeric_values]
-#    return numeric_values
-
-def map_coefficients_to_variables(expression, numeric_values):
-    variables = ['i_L1', 'v_C1', 'v_C2', 'v_C3', 'v_C4']
-    coefficient_map = {var: 0.0 for var in variables}
-
-    # Assign the coefficients to respective variables based on index
-    for i, var in enumerate(variables):
-        coefficient_map[var] = numeric_values[i]
-
-    return coefficient_map
-
-def create_coefficient_vector(expression, numeric_values):
-    variables = ['i_L1', 'v_C1', 'v_C2', 'v_C3', 'v_C4']
-    coefficient_vector = []
-
-    # Assign the coefficients to a list based on index order
-    for i, var in enumerate(variables):
-        coefficient_vector.append(numeric_values[i])
-
-    return coefficient_vector
-
-def sym_solve():
-
-    var('i_VS i_C2 v_L1 i_C1 i_C3 i_R2 i_R3 v_C2 v_C1 v_C3 v_VS i_L1 A B C Vaux x u')
-
-    variable_names = ['i_VS', 'i_C2', 'v_L1', 'i_C1', 'i_C3', 'i_R2', 'i_R3']
-
-    # Create a string representation of the list without quotes
-    formatted_list = '[' + ', '.join(variable_names) + ']'
-
-    print (formatted_list)
-
-    #Vaux = Matrix([i_VS, i_C2, v_L1, i_C1, i_C3, i_R2, i_R3])
-    Vaux = Matrix(variable_names)
-    #Vaux = Matrix([formatted_list])
-    x    = Matrix([v_C2, v_C1, v_C3, i_L1])
-
-    #print (x)
-
-    u    = Matrix([v_VS])
-
-    #                  +  *  +  +
-    A    = Matrix([[1, 0, 0, 0, 0, 0, -1],
-                   [0, 1, 0, 0, 0, 0, -1],
-                   [0, 0, 1, 0, 0, 0, 0],
-                   [0, 0, 0, 1, 0, 1, -1],
-                   [0, 0, 0, 0, 1,-1, 1],
-                   [0, 0, 0, 0, 0, 1e3,0],
-                   [0, 0, 0, 0, 0, 0, 1e-3]])
-
-    #B     = Matrix([[0, 0, 0, 0],
-    #                [0, 0, 0, 1],
-    #                [-1,0, 1, 0],
-    #                [0, 0, 0, 0],
-    #                [0, 0, 0,-1],
-    #                [0,-1, 1, 0],
-    #                [1, 1,-1, 0]])
-
-    B     = Matrix([[ 0,  0,  0,  0],
-                    [ 0,  0,  0,  1],
-                    [ 0, -1,  1,  0],
-                    [ 0,  0,  0,  0],
-                    [ 0,  0,  0, -1],
-                    [-1,  0,  1,  0],
-                    [ 1,  1, -1,  0]] )
-
-    #print (B)
-
-    C     = Matrix([0, 0, 0, 0, 0, 0, -1])
-
-    Ainv  = A.inv()
-
-    i = A.multiply(Vaux) + B.multiply(x) + C.multiply(u)
-
-    j = -A.inv().multiply(B).multiply(x) - A.inv().multiply(C).multiply(u)
-
-    print(type(regex))  # Output the type of the re module
-    print(hasattr(regex, 'findall'))  # Check if the findall method is present
-
-    print (j)
-
-    print()
-    print()
-    print()
-    print (j[1])
-
-    string_expression = str(j[1])
-    string_expression = regex.sub(r"\s+", "", string_expression)
-    numeric_values_list = extract_numeric_values(string_expression)
-    coefficients_mapping = create_coefficient_vector(string_expression, numeric_values_list)
-    coefficients         = separate_numeric_non_numeric(string_expression)
-    print(coefficients_mapping)
-    print(coefficients)
-
 def main():
 
     ckt = Circuit()
@@ -322,9 +221,25 @@ def main():
 
     ckt.get_ss()
 
-    sys = ct.ss(ckt.A, ckt.B, ckt.C, ckt.D)
+    ckt_lti = Circuit(lti=True)
+    rser = True
+    add_circuit(ckt_lti, rser)
+    ckt_lti.init_circuit()
+    ckt_lti.get_ss()
+
+    x0 = np.zeros(ckt_lti.num_sys_vars)
+    x0 = ckt_lti.get_lti_const_x0(x0)
+
+    sys = ct.ss(ckt_lti.A, ckt_lti.B, ckt_lti.C, ckt_lti.D)
+
+    tstep = 10000
+    t     = np.linspace(0, 50e-6, tstep)
+
+    print (ckt_lti.A)
+    print (ckt_lti.B)
+
     #mag, phase, omega = ct.freqresp(sys, [0.1, 1., 10.])
-    T, yout = ct.step_response(sys, output=0)
+    T, yout = ct.step_response(sys, output=0, T=t, X0=x0)
 
     outputs = np.zeros(len(yout[0][0]))
 
@@ -341,8 +256,7 @@ def main():
     fig, ax1 = plt.subplots()
     ax2 = ax1.twinx()
 
-    tstep = 10000
-    t     = np.linspace(0, 50e-6, tstep)
+
     ax1.plot(T, outputs)
     for sys_var in range(len(y[0,:])):
 
