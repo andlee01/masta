@@ -343,7 +343,7 @@ def main():
 
     tstep = 10000
     t     = np.linspace(0, 50e-6, tstep)
-    ax1.plot(T, outputs)
+    #ax1.plot(T, outputs)
     for sys_var in range(len(y[0,:])):
 
         inst = str(ckt.get_edge_info_from_sys_var_ref(sys_var).instance)
@@ -383,7 +383,7 @@ def main():
     if rser == False:
         plt.savefig("litmus0_rser0.png", bbox_inches = 'tight')
     else:
-        plt.savefig("litmus0_rser1.png", bbox_inches = 'tight')
+        plt.savefig("litmus0_rser1.svg", bbox_inches = 'tight')
 
     plt.show()
 
