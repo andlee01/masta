@@ -331,8 +331,23 @@ def main():
     for i in range(len(outputs)):
         outputs[i] = yout[0][0][i]
 
+    fstep    = 100000
+    omega    = np.linspace(0, 100e6, fstep)
+
     plt.plot(T, outputs)
     plt.show(block=False)
+
+    mag, phase, omega_out = ct.freqresp(sys, omega=omega)
+
+    fig, ax3 = plt.subplots()
+
+    mag_out = np.zeros(len(mag[0][0]))
+    for i in range(len(mag[0][0])):
+        mag_out[i] = 20 * math.log(mag[0][0][i])
+
+    plt.xscale("log")
+    #plt.yscale("log")
+    ax3.plot(omega_out, mag_out)
 
     #exit(0)
 
@@ -343,7 +358,8 @@ def main():
 
     tstep = 10000
     t     = np.linspace(0, 50e-6, tstep)
-    #ax1.plot(T, outputs)
+    ax1.plot(T, outputs)
+
     for sys_var in range(len(y[0,:])):
 
         inst = str(ckt.get_edge_info_from_sys_var_ref(sys_var).instance)

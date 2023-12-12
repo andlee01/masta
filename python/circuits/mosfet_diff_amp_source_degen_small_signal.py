@@ -311,7 +311,7 @@ def add_circuit_small(ckt, op):
     # (13)
     c_src_dgen = capacitor()
     c_src_dgen.set_instance("C_SRC_DEGEN")
-    c_src_dgen.set_value(value=1e-9)
+    c_src_dgen.set_value(value=100e-9)
     ckt.add_edge(n5, n4, c_src_dgen)
 
     # Add Vgs V1 (14)
@@ -333,6 +333,7 @@ def add_circuit_small(ckt, op):
     vmeas = current_src()
     vmeas.set_is_const()
     vmeas.set_value(0.0)
+    vmeas.set_is_output()
     vmeas.set_instance("VMEAS")
     ckt.add_edge(nvout, GND, vmeas)
 
@@ -470,14 +471,33 @@ def main():
     tstep = 10000
     t     = np.linspace(0, 50e-6, tstep)
 
+    fstep    = 100000
+    omega    = np.linspace(20e3, 2e9, fstep)
+    #print (omega)
+
     T, yout = ct.step_response(sys, output=0, T=t, X0=x0)
 
-    outputs = np.zeros(len(yout[0][0]))
-    for i in range(len(outputs)):
-        outputs[i] = yout[0][0][i]
+    mag, phase, omega_out = ct.freqresp(sys, omega=omega)
 
-    plt.plot(T, outputs)
-    plt.show(block=False)
+    #outputs = np.zeros(len(yout[0][0]))
+    #for i in range(len(outputs)):
+    #    outputs[i] = yout[0][0][i]
+
+
+    #mag_out = np.zeros(len(mag[0][0]))
+    #for i in range(len(mag[0][0])):
+    #    mag_out[i] = 20 * math.log(mag[0][0][i])
+
+    mag_out = np.zeros(len(mag))
+    for i in range(len(mag)):
+        mag_out[i] = 20 * math.log(mag[i])
+
+    outputs = np.zeros(len(yout))
+    for i in range(len(outputs)):
+        outputs[i] = yout[i]
+
+    #plt.plot(T, outputs)
+    #plt.show(block=False)
 
     # Large signal
     ckt_dyn = Circuit()
@@ -487,7 +507,16 @@ def main():
     y = ode_solve(ckt_dyn)
 
     plt.plot(t,y)
+    plt.plot(T, outputs)
+    #plt.plot(omega_out, mag)
+    plt.show(block=False)
+
+    fig, ax1 = plt.subplots()
+    plt.xscale("log")
+    ax1.plot(omega_out, mag_out)
     plt.show()
+
+
 
     print (ckt_small.num_sys_vars)
 

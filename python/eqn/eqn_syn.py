@@ -33,6 +33,7 @@ class Circuit:
         # Indication if the Circuit is LTI
         #  - When true disables insertion of depedency variables for dependent sources
         self.lti = lti
+        self.num_outputs_lti = 0
 
     # Add an edge to the Graph.
     # Note that explicit pos_node and neg_node attributes are stored as part of the edge dict
@@ -424,13 +425,23 @@ class Circuit:
 
     def set_const_sys_var_ref(self):
 
-
         for (u,v,d) in self.G.edges(data=True):
             elem = d['info']
 
             if elem.get_is_const():
                 elem.set_sys_var(self.num_sys_vars)
                 self.num_sys_vars += 1
+
+    def set_lti_outputs(self):
+
+        self.num_outputs_lti = 0
+
+        for (u,v,d) in self.G.edges(data=True):
+            elem = d['info']
+
+            if elem.get_is_output():
+                elem.set_output_ref(self.num_outputs_lti)
+                self.num_outputs_lti += 1
 
     def set_denerate_ref(self):
 
@@ -586,6 +597,23 @@ class Circuit:
             if ref == edge_ref:
                 return True
 
+    def is_output_lti(self, ref):
+
+        for (u,v,d) in self.co_tree.edges(data=True):
+            edge     = d['info']
+            edge_ref = d['ref']
+
+            if edge.get_is_output():
+                return True
+
+        for (u,v,d) in self.spanning_tree.edges(data=True):
+            edge     = d['info']
+            edge_ref = d['ref']
+
+            if edge.get_is_output():
+                return True
+
+        return False
 
     def extract_numeric_values(self, expression):
         numeric_values = regex.findall(r'[-+]?\d+\.\d+', expression)
@@ -620,8 +648,13 @@ class Circuit:
         # Default state space system matrices
         self.A = np.zeros((self.num_sys_vars, self.num_sys_vars))
         self.B = np.zeros((self.num_sys_vars, 1))
-        self.C = np.eye(self.num_sys_vars)
-        self.D = np.zeros((self.num_sys_vars, 1))
+
+        if self.num_outputs_lti != 0:
+            self.C = np.zeros((self.num_outputs_lti, self.num_sys_vars))
+            self.D = np.zeros((self.num_outputs_lti, 1))
+        else:
+            self.C = np.eye(self.num_sys_vars)
+            self.D = np.zeros((self.num_sys_vars, 1))
 
         # Loop through resulting equations (Vaux = ...)
         #  - Select the equations that correspond to a system variable (cap or ind)
@@ -650,9 +683,26 @@ class Circuit:
                 vect   = self.separate_numeric_non_numeric(str_expr)
 
                 # Parse the above lists and update the state space A and B matrices
-                self.parse_sym_list(coeffs, vect, sys_var_ref)
+                self.parse_sym_list(coeffs, vect, sys_var_ref, state=True)
 
-    def parse_sym_list(self, coeffs, vect, sys_var_ref):
+            elif self.is_output_lti(elem):
+
+                # Determine the output index
+                output_ref = self.get_edge_info(elem).get_output_ref()
+
+                str_expr = str(Vaux[elem])
+                str_expr = regex.sub(r"\s+", "", str_expr)
+
+                # Parse the symbolic equation string into 2 lists
+                # coeffs = [1000.0 1000.001 1000.0 -1000.001 1.0]
+                # vect   = [u0 x0 x1 x2 x3]
+                coeffs = self.extract_numeric_values(str_expr)
+                vect   = self.separate_numeric_non_numeric(str_expr)
+
+                # Parse the above lists and update the state space A and B matrices
+                self.parse_sym_list(coeffs, vect, output_ref, state=False)
+
+    def parse_sym_list(self, coeffs, vect, sys_var_ref, state):
 
         for i in range(len(coeffs)):
 
@@ -667,10 +717,16 @@ class Circuit:
             # Get Index
             index = regex.findall(r'(\d+)', str(vect[i]))
 
-            if mtrx[0] == 'x':
-                self.A[sys_var_ref][int(index[0])] = coeffs[i]
+            if state:
+                if mtrx[0] == 'x':
+                    self.A[sys_var_ref][int(index[0])] = coeffs[i]
+                else:
+                    self.B[sys_var_ref][int(index[0])] = coeffs[i]
             else:
-                self.B[sys_var_ref][int(index[0])] = coeffs[i]
+                if mtrx[0] == 'x':
+                    self.C[sys_var_ref][int(index[0])] = coeffs[i]
+                else:
+                    self.D[sys_var_ref][int(index[0])] = coeffs[i]
 
     def get_ss_A(self):
 
@@ -915,7 +971,6 @@ class Circuit:
             else:
                 assert False, "Unmapped element"
 
-
         # Combine the final qf and bf equations
         A_ss = qf_A_ss + bf_A_ss
 
@@ -979,5 +1034,6 @@ class Circuit:
 
         if self.lti:
             self.set_const_sys_var_ref()
+            self.set_lti_outputs()
 
         self.scb = Scoreboard(num_edges=self.num_edges, num_sys_vars=self.num_sys_vars, degen_mtrx=self.degen_mtrx)

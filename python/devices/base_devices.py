@@ -103,6 +103,10 @@ class TwoPortElement(ABC):
         # Category 3
         self.is_const = False
 
+        # For LTI Circuits only
+        self.is_output  = False
+        self.output_ref = -1
+
     def set_value(self, value):
         self.value = value
 
@@ -148,6 +152,18 @@ class TwoPortElement(ABC):
 
     def get_is_input(self):
         return self.is_input
+
+    def set_is_output(self):
+        self.is_output = True
+
+    def get_is_output(self):
+        return self.is_output
+
+    def set_output_ref(self, ref):
+        self.output_ref = ref
+
+    def get_output_ref(self):
+        return self.output_ref
 
     def set_is_const(self):
         self.is_const = True
