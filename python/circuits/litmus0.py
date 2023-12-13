@@ -24,58 +24,6 @@ from sympy import *
 
 import re as regex
 
-nmos_params = {"KP"     : 120e-6,
-               "vth"    : 0.8,
-               "lambda" : 0.01,
-               "L"      : 2,
-               "W"      : 10}
-
-pmos_params = {"KP"     : 40e-6,
-               "vth"    : 0.9,
-               "lambda" : 0.0125,
-               "L"      : 2,
-               "W"      : 30}
-
-vgs_1_ref = 0
-
-def add_nmos(g, d, s, KP, vth, l_lambda, L, W, ckt):
-    ids = vccs_l1_mosfet()
-    ids.set_type(ElementType.current_src)
-    ids.set_instance("IDS")
-    ids.set_params(KP=KP, \
-                   vth=vth, \
-                   l_lambda=l_lambda, \
-                   L=L, \
-                   W=W)
-
-    vgs = current_src()
-    vgs.set_type(ElementType.current_src)
-    vgs.set_instance("VGS")
-
-    ids_ref = ckt.add_edge(d, s, ids)
-    vgs_ref = ckt.add_edge(g, s, vgs)
-
-    ids.set_vgs_ref(vgs_ref=vgs_ref)
-
-def add_pmos(g, d, s, KP, vth, l_lambda, L, W, ckt):
-    isd = vccs_l1_mosfet()
-    isd.set_type(ElementType.current_src)
-    isd.set_instance("IDS")
-    isd.set_params(KP=KP, \
-                   vth=vth, \
-                   l_lambda=l_lambda, \
-                   L=L, \
-                   W=W)
-
-    vsg = current_src()
-    vsg.set_type(ElementType.current_src)
-    vsg.set_instance("VGS")
-
-    ids_ref = ckt.add_edge(s, d, isd)
-    vgs_ref = ckt.add_edge(s, g, vsg)
-
-    isd.set_vgs_ref(vgs_ref=vgs_ref)
-
 def add_circuit(ckt, rser):
 
     Vs_val = 1.0
@@ -93,7 +41,6 @@ def add_circuit(ckt, rser):
 
     #Add Vs
     Vs = voltage_src(ramp=False, ramp_ddt=1e6)
-    Vs.set_type(ElementType.voltage_src)
     Vs.set_value(Vs_val)
     Vs.set_instance("Vs")
     Vs.set_is_input()
@@ -101,51 +48,41 @@ def add_circuit(ckt, rser):
 
     # Add C2
     C2 = capacitor()
-    C2.set_type(ElementType.capacitor)
     C2.set_value(C2_val)
     C2.set_instance("C2")
     ckt.add_edge(1, 3, C2)
 
     # Add L1
     L1 = inductor()
-    L1.set_type(ElementType.inductor)
     L1.set_value(L1_val)
     L1.set_instance("L1")
     ckt.add_edge(1, 2, L1)
 
     # Add C1
     C1 = capacitor()
-    C1.set_type(ElementType.capacitor)
     C1.set_value(C1_val)
     C1.set_instance("C1")
     ckt.add_edge(2, 0, C1)
 
     # Add C3
     C3 = capacitor()
-    C3.set_type(ElementType.capacitor)
     C3.set_value(C3_val)
     C3.set_instance("C3")
     ckt.add_edge(2, 3, C3)
 
     # Add R2
     R2 = resistor()
-    R2.set_type(ElementType.resistor)
     R2.set_value(R2_val)
     R2.set_instance("R2")
     ckt.add_edge(3, 0, R2)
 
     if (rser):
         R3 = resistor()
-        R3.set_type(ElementType.resistor)
         R3.set_value(R3_val)
         R3.set_instance("R3")
         ckt.add_edge(v_node, 1, R3)
 
 def circuit_eqn(x, sys, ckt, vs, t):
-
-    # set Vs
-    #vs_ref = ckt.get_ref_from_instance("Vs")
-    #ckt.set_value(ref=vs_ref, value=vs)
 
     # current Im
     I = ckt.get_im(x=x, sys=sys, t=t)
@@ -203,112 +140,6 @@ def ode_solve(ckt):
 
     return y
 
-def extract_numeric_values(expression):
-    numeric_values = regex.findall(r'[-+]?\d+\.\d+', expression)
-    numeric_values = [float(value) for value in numeric_values]
-    return numeric_values
-
-def separate_numeric_non_numeric(input_string):
-    non_numeric_list = regex.findall(r'\b(?<!\d)(?<![a-zA-Z_])[a-zA-Z_]+[a-zA-Z0-9_]*\b', input_string)
-    return non_numeric_list
-
-#def extract_numeric_values(expression):
-#    numeric_values = regex.findall(r'-?\d+\.\d+|-?\d+(?![\w.])', expression)
-#    numeric_values = [float(value) for value in numeric_values]
-#    return numeric_values
-
-def map_coefficients_to_variables(expression, numeric_values):
-    variables = ['i_L1', 'v_C1', 'v_C2', 'v_C3', 'v_C4']
-    coefficient_map = {var: 0.0 for var in variables}
-
-    # Assign the coefficients to respective variables based on index
-    for i, var in enumerate(variables):
-        coefficient_map[var] = numeric_values[i]
-
-    return coefficient_map
-
-def create_coefficient_vector(expression, numeric_values):
-    variables = ['i_L1', 'v_C1', 'v_C2', 'v_C3', 'v_C4']
-    coefficient_vector = []
-
-    # Assign the coefficients to a list based on index order
-    for i, var in enumerate(variables):
-        coefficient_vector.append(numeric_values[i])
-
-    return coefficient_vector
-
-def sym_solve():
-
-    var('i_VS i_C2 v_L1 i_C1 i_C3 i_R2 i_R3 v_C2 v_C1 v_C3 v_VS i_L1 A B C Vaux x u')
-
-    variable_names = ['i_VS', 'i_C2', 'v_L1', 'i_C1', 'i_C3', 'i_R2', 'i_R3']
-
-    # Create a string representation of the list without quotes
-    formatted_list = '[' + ', '.join(variable_names) + ']'
-
-    print (formatted_list)
-
-    #Vaux = Matrix([i_VS, i_C2, v_L1, i_C1, i_C3, i_R2, i_R3])
-    Vaux = Matrix(variable_names)
-    #Vaux = Matrix([formatted_list])
-    x    = Matrix([v_C2, v_C1, v_C3, i_L1])
-
-    #print (x)
-
-    u    = Matrix([v_VS])
-
-    #                  +  *  +  +
-    A    = Matrix([[1, 0, 0, 0, 0, 0, -1],
-                   [0, 1, 0, 0, 0, 0, -1],
-                   [0, 0, 1, 0, 0, 0, 0],
-                   [0, 0, 0, 1, 0, 1, -1],
-                   [0, 0, 0, 0, 1,-1, 1],
-                   [0, 0, 0, 0, 0, 1e3,0],
-                   [0, 0, 0, 0, 0, 0, 1e-3]])
-
-    #B     = Matrix([[0, 0, 0, 0],
-    #                [0, 0, 0, 1],
-    #                [-1,0, 1, 0],
-    #                [0, 0, 0, 0],
-    #                [0, 0, 0,-1],
-    #                [0,-1, 1, 0],
-    #                [1, 1,-1, 0]])
-
-    B     = Matrix([[ 0,  0,  0,  0],
-                    [ 0,  0,  0,  1],
-                    [ 0, -1,  1,  0],
-                    [ 0,  0,  0,  0],
-                    [ 0,  0,  0, -1],
-                    [-1,  0,  1,  0],
-                    [ 1,  1, -1,  0]] )
-
-    #print (B)
-
-    C     = Matrix([0, 0, 0, 0, 0, 0, -1])
-
-    Ainv  = A.inv()
-
-    i = A.multiply(Vaux) + B.multiply(x) + C.multiply(u)
-
-    j = -A.inv().multiply(B).multiply(x) - A.inv().multiply(C).multiply(u)
-
-    print(type(regex))  # Output the type of the re module
-    print(hasattr(regex, 'findall'))  # Check if the findall method is present
-
-    print (j)
-
-    print()
-    print()
-    print()
-    print (j[1])
-
-    string_expression = str(j[1])
-    string_expression = regex.sub(r"\s+", "", string_expression)
-    numeric_values_list = extract_numeric_values(string_expression)
-    coefficients_mapping = create_coefficient_vector(string_expression, numeric_values_list)
-    coefficients         = separate_numeric_non_numeric(string_expression)
-    print(coefficients_mapping)
-    print(coefficients)
 
 def main():
 
@@ -318,48 +149,91 @@ def main():
 
     add_circuit(ckt, rser)
 
+    # Initilise the Circuit
     ckt.init_circuit()
 
+    # Transform into LTI state-space system
     ckt.get_ss()
 
-    sys = ct.ss(ckt.A, ckt.B, ckt.C, ckt.D)
-    #mag, phase, omega = ct.freqresp(sys, [0.1, 1., 10.])
-    T, yout = ct.step_response(sys, output=0)
+    # Define transient simulation time
+    tstep = 10000    
+    t     = np.linspace(0, 50e-6, tstep)
 
-    outputs = np.zeros(len(yout[0][0]))
-
-    for i in range(len(outputs)):
-        outputs[i] = yout[0][0][i]
-
+    # Define frequency response sweep
     fstep    = 100000
     omega    = np.linspace(0, 100e6, fstep)
+    
+    # Transform the Circuit into a LTI system and calculate step response
+    sys = ct.ss(ckt.A, ckt.B, ckt.C, ckt.D)
+    T, yout = ct.step_response(sys, T=t)
 
-    plt.plot(T, outputs)
-    plt.show(block=False)
-
+    # Calculate the step response using a numerical ODE solver
+    y = ode_solve(ckt)
+    
+    # Calculate the frequency response
     mag, phase, omega_out = ct.freqresp(sys, omega=omega)
+    
+    # Plot LTI system transient response
+    fig, ax1 = plt.subplots()
+    ax2 = ax1.twinx()
 
-    fig, ax3 = plt.subplots()
+    for sys_var in range(len(yout)):
+
+        inst = str(ckt.get_edge_info_from_sys_var_ref(sys_var).instance)
+
+        if inst[0] == "C":
+            l = "$V_{" + inst + "}$"
+            ax1.plot(t, yout[sys_var][0], label=l)
+        else:
+            l = "$i_{" + inst + "}$"
+            ax2.plot(t, yout[sys_var][0], label=l, linestyle="dotted")
+
+    if rser == False:
+
+        VC3   = np.zeros(len(t))
+
+        for idx in range(len(t)):
+            for sys_var in range(len(y[0,:])):
+                ckt.scb.v[ckt.get_edge_info_from_sys_var_ref(sys_var).ref] = y[idx, sys_var]
+            ckt.scb.v[0] = 1.0
+
+            C3 = ckt.get_edge_info(ckt.get_ref_from_instance("C3"))
+            C3.get_voltage(ckt.scb)
+            VC3[idx] = ckt.scb.v[ckt.get_edge_info(ckt.get_ref_from_instance("C3")).ref]
+
+        l = "$V_{C3}$"
+        ax1.plot(t, VC3, label=l)
+
+    ax1.legend()
+    ax2.legend(loc="lower right")
+
+    ax1.set_ylabel("$V (V)$")
+    ax1.set_xlabel("$t (S)$")
+
+    ax2.set_ylabel("$i (A)$")
+    ax2.set_xlabel("$t (S)$")
+
+    plt.show(block=False)
+    
+    # Plot the frequency response of sys var 0 (Vc1)
+    fig, ax1 = plt.subplots()
 
     mag_out = np.zeros(len(mag[0][0]))
     for i in range(len(mag[0][0])):
         mag_out[i] = 20 * math.log(mag[0][0][i])
 
     plt.xscale("log")
-    #plt.yscale("log")
-    ax3.plot(omega_out, mag_out)
+    ax1.plot(omega_out, mag_out)
 
-    #exit(0)
-
-    y = ode_solve(ckt)
-
+    ax1.set_ylabel("$Gain (dB)$")
+    ax1.set_xlabel("$frequency (rad/s)$")
+    
+    plt.show(block=False)
+    
+    # Plot numerical solver response
     fig, ax1 = plt.subplots()
     ax2 = ax1.twinx()
-
-    tstep = 10000
-    t     = np.linspace(0, 50e-6, tstep)
-    ax1.plot(T, outputs)
-
+    
     for sys_var in range(len(y[0,:])):
 
         inst = str(ckt.get_edge_info_from_sys_var_ref(sys_var).instance)
