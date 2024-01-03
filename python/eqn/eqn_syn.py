@@ -892,11 +892,23 @@ class Circuit:
             elif self.is_current_source(elem):
 
                 if self.get_edge_info(elem).get_is_input():
-                    assert False, "Input current sources not yet supported"
+
+                    # Get the Qf matrix column
+                    qf_column = qf_A_ss[:,elem]
+
+                    # Get the input index
+                    input_ref = 0
+
+                    # Update C column
+                    C_ss[:,input_ref] = qf_column
+
+                    # Mask Qf column
+                    qf_A_ss[:,elem] = np.zeros(self.num_edges)
+
                 elif self.get_edge_info(elem).get_is_const():
 
                     # Get the Qf matrix column
-                    qf_column = self.qf[:,elem].copy()#qf_A_ss[:,elem]
+                    qf_column = self.qf[:,elem].copy()
 
                     # Determine the column of B to update (i.e. sys var index)
                     sys_var_ref = self.get_edge_info(elem).get_sys_var_ref()
@@ -905,7 +917,7 @@ class Circuit:
                     B_ss[:,sys_var_ref] = qf_column
 
                     # Mask A column
-                    qf_A_ss[:,elem] = qf_A_ss[:,elem] - qf_column#np.zeros(self.num_edges)
+                    qf_A_ss[:,elem] = qf_A_ss[:,elem] - qf_column
 
                 else:
 
@@ -961,13 +973,8 @@ class Circuit:
                     #    already there
                     qf_A_ss[:,dep_ref] = qf_A_ss[:,dep_ref] + (qf_column * self.get_edge_info(elem).get_value())
 
-                    print (dep_ref)
-                    print (self.get_edge_info(elem).get_value())
-                    print ("iiii")
-
                     # The original references to the current source in the qf matrix must be masked out
                     qf_A_ss[:,elem] = qf_A_ss[:,elem] - qf_column
-                    print (qf_A_ss[:,dep_ref])
             else:
                 assert False, "Unmapped element"
 
