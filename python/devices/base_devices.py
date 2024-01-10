@@ -239,7 +239,7 @@ class resistor(TwoPortElement):
 
 class capacitor(TwoPortElement):
 
-    def __init__(self, ramp=False, ramp_ddt=1e6):
+    def __init__(self):
         TwoPortElement.__init__(self)
 
         self.type = ElementType.capacitor
@@ -329,20 +329,25 @@ class inductor(TwoPortElement):
 
 class voltage_src(TwoPortElement):
 
-    def __init__(self, ramp=False, ramp_ddt=1e6):
+    def __init__(self, ramp=False, ramp_ddt=1e6, delay=0):
         TwoPortElement.__init__(self)
 
         self.type = ElementType.voltage_src
 
         self.ramp     = ramp
         self.ramp_ddt = ramp_ddt
+        self.delay    = delay
 
     def get_voltage(self, scb):
 
         if self.ramp:
-            vin = self.ramp_ddt * scb.t
-            if vin > self.value:
-                vin = self.value
+
+            if scb.t > self.delay:
+                vin = self.ramp_ddt * (scb.t - self.delay)
+                if vin > self.value:
+                    vin = self.value
+            else:
+                vin = 0
         else:
             vin = self.value
 
