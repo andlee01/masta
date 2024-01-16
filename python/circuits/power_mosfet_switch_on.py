@@ -71,9 +71,11 @@ def add_power_nmos(g, d, s, KP, VTO, L_LAMBDA, L, W, Cgs_val, Cgd_val, ckt):
 
 def add_circuit(ckt, rser):
 
-    Vs_val     = 12.0
+    Vs_val     = 44.0
     Vdrive_val = 12.0
-    R2_val     = 100
+    R2_val     = 1
+    Rload_val  = 0.01e3
+    RD_val     = 1e-2
 
     # Add Vs
     Vs = voltage_src(ramp=False, ramp_ddt=1e3, delay=5e-6)
@@ -85,7 +87,7 @@ def add_circuit(ckt, rser):
     # Add Iload
     Iload = current_src()
     Iload.set_is_const()
-    Iload.set_value(100e-3)
+    Iload.set_value(1)
     Iload.set_instance("Iload")
     ckt.add_edge(1, 2, Iload)
 
@@ -93,10 +95,16 @@ def add_circuit(ckt, rser):
     D1 = diode_id()
     D1.set_instance("D1")
     D1.set_params(IS=75e-12, N=1.0, EG=0.7, CJO=26e-12, M=0.5, IBV=5e-6, BV=400, TT=4.2e-6)
-    ckt.add_edge(2, 1, D1)
+    ckt.add_edge(-9, 1, D1)
+
+    # Add RD
+    RD = resistor()
+    RD.set_value(RD_val)
+    RD.set_instance("RD")
+    ckt.add_edge(2, -9, RD)
 
     # Add power nmos M1
-    add_power_nmos(g=3, d=2, s=0, KP=67.9211, VTO=2.08819, L_LAMBDA=0.0038193, L=100e-6, W=100e-6, Cgs_val=5e-9, Cgd_val=20e-9, ckt=ckt)
+    add_power_nmos(g=3, d=2, s=0, KP=67.9211, VTO=2.08819, L_LAMBDA=0.0038193, L=100e-6, W=100e-6, Cgs_val=1500e-12, Cgd_val=750e-12, ckt=ckt)
 
     # Add R2
     R2 = resistor()
@@ -105,7 +113,7 @@ def add_circuit(ckt, rser):
     ckt.add_edge(4, 3, R2)
 
     # Add Vdrive
-    Vdrive = voltage_src(ramp=True, ramp_ddt=1e5, delay=50e-6)
+    Vdrive = voltage_src(ramp=True, ramp_ddt=1e6, delay=50e-6)
     Vdrive.set_value(Vdrive_val)
     Vdrive.set_instance("Vdrive")
     Vdrive.set_is_input()
@@ -138,7 +146,7 @@ def dypc_litmus0(t, sys, ckt):
     root_start = np.ones(ckt.num_edges)
     vs = 1
 
-    root = optimize.root(circuit_eqn, root_start, args=(sys, ckt, vs, t), tol=1e-3)
+    root = optimize.root(circuit_eqn, root_start, args=(sys, ckt, vs, t), tol=1e-6)
     if not root.success:
         print (root.x)
         sys.exit(0)
@@ -151,10 +159,10 @@ def ode_solve(ckt):
 
     tstep = 10000
 
-    t     = np.linspace(0, 150e-6, tstep)
+    t     = np.linspace(0, 100e-6, tstep)
     x0    = np.zeros (num_sys_vars)
 
-    r = ode(dypc_litmus0).set_integrator('lsoda', method='bdf', atol=1e-3, rtol=1e-3)
+    r = ode(dypc_litmus0).set_integrator('lsoda', method='bdf', atol=1e-6, rtol=1e-6)
     r.set_initial_value(x0, 0.0)
     r.set_f_params(ckt)
 
