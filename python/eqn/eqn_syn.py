@@ -438,7 +438,6 @@ class Circuit:
 
         for (u,v,d) in self.G.edges(data=True):
             elem = d['info']
-
             if elem.get_is_output():
                 elem.set_output_ref(self.num_outputs_lti)
                 self.num_outputs_lti += 1
@@ -666,14 +665,33 @@ class Circuit:
         #                      B[row] = [1000.0]
         #
         #    Assuming that the system has 4 state variables and 1 input
+
+        # Offset for non sys var capacitors or inductors
+        #  - Non sys var capacitors and inductors are removed from the system of equations
+        #  - Therefore, the element index of any later edges in the list needs corrected by the number
+        #    of non sys var edges before it
+        #
+        #  Before: Vs - 0                After: Vs - 0   elem_offset = 0
+        #          C1 - 1                       C1 - 1   elem_offset = 0
+        #          C2 - 2 non-sys               R2 - 2   elem_offset = 1
+        #          R2 - 3                       L1 - 3   elem_offset = 2
+        #          C3 - 4 non-sys
+        #          L1 - 5
+        elem_offset = 0
+
         for elem in range(self.num_edges):
 
-            if self.is_sys_var_cap(elem) or self.is_sys_var_ind(elem):
+            if self.is_non_sys_var_cap(elem) or self.is_non_sys_var_ind(elem):
+                elem_offset += 1
+
+            elif self.is_sys_var_cap(elem) or self.is_sys_var_ind(elem):
+
+                elem_sel = elem - elem_offset
 
                 # Determine the sys var index
                 sys_var_ref = self.get_edge_info(elem).get_sys_var_ref()
 
-                str_expr = str(Vaux[elem])
+                str_expr = str(Vaux[elem_sel])
                 str_expr = regex.sub(r"\s+", "", str_expr)
 
                 # Parse the symbolic equation string into 2 lists
@@ -732,10 +750,19 @@ class Circuit:
 
         qf_A_ss = self.qf.copy()
         bf_A_ss = self.bf.copy()
-        B_ss    = np.zeros([self.num_edges, self.num_sys_vars])
+
+        # For numerical precision reasons, use the long double type.
+        # Element values can have large ranges. For example, resistors could be 10M and capacitor values
+        # could be 20f. Values with such large differences in magnitude represent a problem for double precision
+        # values. That is, they may lack the required precision to adequately represent the numbers, especially when added.
+        qf_A_ss = qf_A_ss.astype(np.longdouble)
+        bf_A_ss = bf_A_ss.astype(np.longdouble)
+        B_ss    = np.zeros([self.num_edges, self.num_sys_vars], dtype=np.longdouble)
+
+        non_sys = np.zeros([self.num_edges, self.num_edges], dtype=np.longdouble)
 
         # REVISIT (needs to be num_inputs)
-        C_ss    = np.zeros([self.num_edges, 1])
+        C_ss    = np.zeros([self.num_edges, 1], dtype=np.longdouble)
 
         for elem in range(self.num_edges):
 
@@ -840,7 +867,67 @@ class Circuit:
                 qf_A_ss[:,elem] = qf_A_ss[:,elem] * self.get_edge_info(elem).get_value()
 
             elif self.is_non_sys_var_cap(elem):
-                assert False, "Non sys var capacitors not supported"
+
+                # Get the Bf matrix row
+                bf_row = self.bf[elem ,:].copy()
+
+                for elem_chk in range(self.num_edges):
+                    if bf_row[elem_chk] and elem_chk != elem:
+                        assert self.is_sys_var_cap(elem_chk), "Fucked " + str(elem_chk)
+
+                # Mask references to self
+                #  i.e. VC3 - VC2 + VC1 = 0
+                #       If the element being processed is VC3, remove from equation
+                #       VC2 + VC1 = 0
+
+                # Assume element being process is VC3 and VC3 - VC2 + VC1 = 0.
+                #  - To determine current through C3:
+                #       ddt(VC3) - ddt(VC2) + ddt(VC1) = 0
+                #       ddt(VC3) = ddt(VC2) - ddt(VC1)
+                #       (iC3/C3) = ddt(VC2) - ddt(VC1)
+                #        iC3     = C3 * (ddt(VC2) - ddt(VC1))
+                #
+                #       VC2 VC3    VC1
+                #           +--+
+                #  1 -1  0  |0 | 0  0
+                #  0  0  0  |0 | 0  0
+                #  0 -1  1  |1 | 0  0
+                #  0  0  0  |0 | 0  0
+                #  0  0  0  |0 | 0  0
+                #  0  0  0  |-1| 1  1
+                #           +--+
+                #
+                # In the above example, Qf equations 2 and 6 require iC3 as a variable.
+                # The following matrix should therefore be added to qf_A_ss:
+                #
+                # 0 0   0 0 0 0
+                # 0 0   0 0 0 0
+                # 0 0  C3 0 0 -C3
+                # 0 0   0 0 0 0
+                # 0 0   0 0 0 0
+                # 0 0 -C3 0 0 C3
+                #
+
+                # Form the base bf row to add to qf_A_ss
+                bf_row[elem] = 0
+                bf_row = -1 * (bf_row * self.get_edge_info(elem).get_value())
+
+                # Multiply the base_bf_row by the qf column corresponding to the element to form the addition
+                # matrix
+                #
+                # [ 0 0  C3 0 0 -C3 ] * [ 0] =  [0 0   0 0 0 0  ]
+                #                       [ 0]    [0 0   0 0 0 0  ]
+                #                       [ 1]    [0 0  C3 0 0 -C3]
+                #                       [ 0]    [0 0   0 0 0 0  ]
+                #                       [ 0]    [0 0   0 0 0 0  ]
+                #                       [-1]    [0 0 -C3 0 0 C3 ]
+                non_sys += bf_row * self.qf[:,[elem]]
+
+                # Remove any references to this element:
+                #  - bf_A_ss remove the equation i.e. delete VC3 - VC2 + VC1 = 0
+                #  - qf_A_ss remove references to column iC3 in qf
+                bf_A_ss[elem ,:] = 0
+                qf_A_ss[:, elem] = 0
 
             elif self.is_co_tree_res(elem) or self.is_spanning_tree_res(elem):
 
@@ -979,7 +1066,18 @@ class Circuit:
                 assert False, "Unmapped element"
 
         # Combine the final qf and bf equations
-        A_ss = qf_A_ss + bf_A_ss
+        A_ss = qf_A_ss + bf_A_ss + non_sys
+
+        elem_offset = 0
+        for elem in range(self.num_edges):
+            if self.is_non_sys_var_ind(elem) or self.is_non_sys_var_cap(elem):
+                A_ss = np.delete(A_ss, (elem - elem_offset), axis=0)
+                A_ss = np.delete(A_ss, (elem - elem_offset), axis=1)
+
+                B_ss = np.delete(B_ss, (elem - elem_offset), axis=0)
+                C_ss = np.delete(C_ss, (elem - elem_offset), axis=0)
+
+                elem_offset += 1
 
         return A_ss, B_ss, C_ss
 
@@ -1033,9 +1131,11 @@ class Circuit:
         self.get_qf_matrix()
         self.get_bf_matrix()
         self.set_sys_var_ref()
-        self.set_denerate_ref()
+
+        self.degen_mtrx = 0
 
         if not self.lti:
+            self.set_denerate_ref()
             for (u,v,d) in self.G.edges(data=True):
                 d['info'].set_dependencies(self)
 

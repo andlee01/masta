@@ -7,9 +7,6 @@ sys.path.append("../devices")
 from base_devices import ElementType, TwoPortElement
 from base_devices import *
 
-sys.path.append("../subckt")
-from mos import *
-
 sys.path.append("../networks")
 from pmos_active_load import *
 
