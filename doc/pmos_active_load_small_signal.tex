@@ -1,0 +1,57 @@
+\documentclass{standalone}
+
+\usepackage{tikz}
+\usepackage[europeanresistors,americaninductors,americancurrents,siunitx]{circuitikz}
+
+\begin{document}
+ \begin{circuitikz}
+
+   \ctikzset{open poles opacity=0.0}
+
+    \draw (2,-1) node[ground](GND_M1){};
+    \draw (8,-1) node[ground](GND_M2){};
+    \draw (2,5) node[ground,rotate=180](GND_VCC_M1){};
+    \draw (8,5) node[ground,rotate=180](GND_VCC_M2){};
+
+    % Draw M1
+    \draw (0,3) node[circ] (G_M1){};
+    \draw (2,1) node[circ] (D_M1){};
+    \draw (2,3) node[circ] (S_M1){};
+
+    % Isd
+    \draw (S_M1) to[I, l^=$gm_{M1}$] (D_M1);
+    % Ro
+    \draw (S_M1) to[short] ++(2,0) to[R, l^=${R_O}_{M1}$] ++(0,-2) to[short] (D_M1);
+    % Isg
+    \draw (S_M1) to[I, v_=${V_{SG}}_{M1}$] (G_M1);
+ 
+    % Draw M2
+    \draw (6,3) node[circ] (G_M2){};
+    \draw (8,1) node[circ] (D_M2){};
+    \draw (8,3) node[circ] (S_M2){};
+
+    % Isd
+    \draw (S_M2) to[I, l^=$gm_{M2}$] (D_M2);
+    % Ro
+    \draw (S_M2) to[short] ++(2,0) to[R, l^=${R_O}_{M2}$] ++(0,-2) to[short] (D_M2);
+    % Isg
+    \draw (S_M2) to[I, v_=${V_{SG}}_{M2}$] (G_M2);
+
+    % Ground connections (M1)
+    \draw (S_M1) to[short] (GND_VCC_M1);
+
+    % Connect M1 gate to M2 drain
+    \draw (G_M1) to[short] ++(0,-2) to[short] (D_M1);
+
+    % Ground connections (M2)
+    \draw (S_M2) to[short] (GND_VCC_M2);
+
+    % Connect M2 Gate to M1 Drain
+    \draw (G_M2) to[short] ++(0,-2) to[short] (D_M1) to ++(2,0) node[circ] (){};
+
+    % Iref
+    \draw (D_M1) to[I, l^=$i_{REF+}$] (GND_M1);
+    \draw (D_M2) to[I, l^=$i_{REF-}$] (GND_M2);
+
+ \end{circuitikz}
+ \end{document}

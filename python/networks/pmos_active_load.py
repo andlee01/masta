@@ -32,7 +32,6 @@ class pmos_active_load():
 
         # Add Iref
         iref_p = current_src()
-        iref_p.set_type(ElementType.current_src)
         iref_p.set_instance("iref_p")
         iref_p.set_value(value=20e-6)
         ckt.add_edge(n2, GND, iref_p)
@@ -45,14 +44,12 @@ class pmos_active_load():
 
         # Add Iref
         iref_n = current_src()
-        iref_n.set_type(ElementType.current_src)
         iref_n.set_instance("iref_n")
         iref_n.set_value(value=20e-6)
         ckt.add_edge(n1, GND, iref_n)
 
         # Add Vs
         vs = voltage_src()
-        vs.set_type(ElementType.voltage_src)
         vs.set_instance("VS")
         vs.set_value(value=5.0)
         ckt.add_edge(VCC, GND, vs)
@@ -78,7 +75,6 @@ class pmos_active_load():
 
         # Add Iref
         iref_p = current_src()
-        iref_p.set_type(ElementType.current_src)
         iref_p.set_instance("iref_p")
         iref_p.set_value(value=0)
         ckt_sml.add_edge(n2, GND, iref_p)
@@ -89,7 +85,6 @@ class pmos_active_load():
 
         # Add Iref
         iref_n = current_src()
-        iref_n.set_type(ElementType.current_src)
         iref_n.set_instance("iref_n")
         iref_n.set_value(value=0)
         ckt_sml.add_edge(n1, GND, iref_n)
