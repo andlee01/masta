@@ -283,7 +283,7 @@ class capacitor(TwoPortElement):
         return
 
     def get_weight(self):
-        return 0
+        return 1
 
     def get_dy(self, x, sys):
         if self.sys_var_ref != -1:
@@ -381,6 +381,45 @@ class voltage_src(TwoPortElement):
         else:
             scb.dv[self.ref] = 0
 
+class sine_voltage_src(TwoPortElement):
+
+    def __init__(self, omega=1e6, mag=0.6, phi=0, bias=0):
+        TwoPortElement.__init__(self)
+
+        self.type = ElementType.voltage_src
+
+        self.omega    = omega
+        self.mag      = mag
+        self.phi      = phi
+        self.bias     = bias
+
+    def get_voltage(self, scb):
+        scb.v[self.ref] = self.bias + (self.mag * math.sin(self.omega * scb.t + self.phi))
+
+    def get_current(self, scb):
+        scb.i[self.ref] = scb.x[self.ref]
+
+    def get_dependent_current(self, scb):
+        return 0.0
+
+    def get_degen_current(self, scb):
+        return
+
+    def set_dependencies(self, ckt):
+        return
+
+    def set_dependencies(self, ckt):
+        return
+
+    def get_weight(self):
+        return 0
+
+    def get_dy(self, x, sys):
+        return sys
+
+    def get_ddt(self, scb):
+        scb.dv[self.ref] = 0
+
 class current_src(TwoPortElement):
 
     def __init__(self):
@@ -434,6 +473,10 @@ class vccs_l1_mosfet(TwoPortElement):
         return (self.vgs > self.vth) and \
                (self.vds > (self.vgs - self.vth)) and \
                (self.vgs > 0) and (self.vds > 0)
+
+    def print_stats(self):
+        print (self.vgs)
+        print (self.vds)
 
     def check_tri(self):
 

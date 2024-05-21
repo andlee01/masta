@@ -602,14 +602,14 @@ class Circuit:
             edge     = d['info']
             edge_ref = d['ref']
 
-            if edge.get_is_output():
+            if edge_ref == ref and edge.get_is_output():
                 return True
 
         for (u,v,d) in self.spanning_tree.edges(data=True):
             edge     = d['info']
             edge_ref = d['ref']
 
-            if edge.get_is_output():
+            if edge_ref == ref and edge.get_is_output():
                 return True
 
         return False
@@ -703,22 +703,12 @@ class Circuit:
                 # Parse the above lists and update the state space A and B matrices
                 self.parse_sym_list(coeffs, vect, sys_var_ref, state=True)
 
-            elif self.is_output_lti(elem):
+            if self.is_output_lti(elem):
 
-                # Determine the output index
-                output_ref = self.get_edge_info(elem).get_output_ref()
-
-                str_expr = str(Vaux[elem])
-                str_expr = regex.sub(r"\s+", "", str_expr)
-
-                # Parse the symbolic equation string into 2 lists
-                # coeffs = [1000.0 1000.001 1000.0 -1000.001 1.0]
-                # vect   = [u0 x0 x1 x2 x3]
-                coeffs = self.extract_numeric_values(str_expr)
-                vect   = self.separate_numeric_non_numeric(str_expr)
-
-                # Parse the above lists and update the state space A and B matrices
-                self.parse_sym_list(coeffs, vect, output_ref, state=False)
+                if self.is_sys_var_cap(elem):
+                    output_ref  = self.get_edge_info(elem).get_output_ref()
+                    sys_var_ref = self.get_edge_info(elem).get_sys_var_ref()
+                    self.C[output_ref][sys_var_ref] = 1
 
     def parse_sym_list(self, coeffs, vect, sys_var_ref, state):
 
@@ -873,7 +863,7 @@ class Circuit:
 
                 for elem_chk in range(self.num_edges):
                     if bf_row[elem_chk] and elem_chk != elem:
-                        assert self.is_sys_var_cap(elem_chk), "Fucked " + str(elem_chk)
+                        assert self.is_sys_var_cap(elem_chk), "Only capacitors allowed in  loops with co-tree capacitors " + str(elem_chk)
 
                 # Mask references to self
                 #  i.e. VC3 - VC2 + VC1 = 0
