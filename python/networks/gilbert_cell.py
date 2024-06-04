@@ -9,7 +9,7 @@ from nmos_subckt import *
 
 class gilbert_cell_switching_stage():
 
-    def __init__(self, ckt):
+    def __init__(self, ckt, sine_src=False):
 
         # Nodes
         GND  = 0
@@ -44,17 +44,32 @@ class gilbert_cell_switching_stage():
         self.iref_n.set_value(value=20e-6)
         ckt.add_edge(n1, GND, self.iref_n)
 
-        # Add VLop
-        self.v_vlop = voltage_src()
-        self.v_vlop.set_instance("VS")
-        self.v_vlop.set_value(value=2.6)
-        ckt.add_edge(vlop, GND, self.v_vlop)
+        freq  = 1e6
+        omega = math.pi * 2 * freq
 
-        # Add VLon
-        self.v_vlon = voltage_src()
-        self.v_vlon.set_instance("VS")
-        self.v_vlon.set_value(value=2.5)
-        ckt.add_edge(vlon, GND, self.v_vlon)
+        if sine_src:
+            # Add VLop
+            self.v_vlop = sine_voltage_src(omega=omega, mag=0.25, phi=0, bias=2.0)
+            self.v_vlop.set_instance("VS")
+            ckt.add_edge(vlop, GND, self.v_vlop)
+
+            # Add VLon
+            self.v_vlon = sine_voltage_src(omega=omega, mag=0.25, phi=math.pi, bias=2.0)
+            self.v_vlon.set_instance("VS")
+            ckt.add_edge(vlon, GND, self.v_vlon)
+
+        else:
+            # Add VLop
+            self.v_vlop = voltage_src()
+            self.v_vlop.set_instance("VS")
+            self.v_vlop.set_value(value=2.25)
+            ckt.add_edge(vlop, GND, self.v_vlop)
+
+            # Add VLon
+            self.v_vlon = voltage_src()
+            self.v_vlon.set_instance("VS")
+            self.v_vlon.set_value(value=1.75)
+            ckt.add_edge(vlon, GND, self.v_vlon)
 
         # Add Rd1
         Rd1 = resistor()
@@ -68,13 +83,26 @@ class gilbert_cell_switching_stage():
         Rd2.set_value(value=1e4)
         self.rd2_ref = ckt.add_edge(VCC, vfn, Rd2)
 
+        if sine_src:
+            # Add C1
+            C1 = capacitor()
+            C1.set_instance("C1")
+            C1.set_value(value=1e-12)
+            ckt.add_edge(vfp, GND, C1)
+
+            # Add C2
+            C2 = capacitor()
+            C2.set_instance("C2")
+            C2.set_value(value=1e-12)
+            ckt.add_edge(vfn, GND, C2)
+
         # Add Vcc
         vs = voltage_src()
         vs.set_instance("VS")
         vs.set_value(value=5.0)
         ckt.add_edge(VCC, GND, vs)
 
-    def add_sml_ckt(self, ckt_sml, op):
+    def add_sml_ckt(self, ckt_sml, op, sine_src=False):
 
         # Nodes
         GND  = 0
@@ -105,17 +133,44 @@ class gilbert_cell_switching_stage():
         self.iref_n_sml.set_value(value=0)
         ckt_sml.add_edge(n1, GND, self.iref_n_sml)
 
-        # Add VLop
-        self.v_vlop_sml = voltage_src()
-        self.v_vlop_sml.set_instance("VS")
-        self.v_vlop_sml.set_value(value=0)
-        ckt_sml.add_edge(vlop, GND, self.v_vlop_sml)
+        ## Add VLop
+        #self.v_vlop_sml = voltage_src()
+        #self.v_vlop_sml.set_instance("VS")
+        #self.v_vlop_sml.set_value(value=0)
+        #ckt_sml.add_edge(vlop, GND, self.v_vlop_sml)
+        #
+        ## Add VLon
+        #self.v_vlon_sml = voltage_src()
+        #self.v_vlon_sml.set_instance("VS")
+        #self.v_vlon_sml.set_value(value=0)
+        #ckt_sml.add_edge(vlon, GND, self.v_vlon_sml)
 
-        # Add VLon
-        self.v_vlon_sml = voltage_src()
-        self.v_vlon_sml.set_instance("VS")
-        self.v_vlon_sml.set_value(value=0)
-        ckt_sml.add_edge(vlon, GND, self.v_vlon_sml)
+        freq  = 1e6
+        omega = math.pi * 2 * freq
+
+        if sine_src:
+            # Add VLop
+            self.v_vlop_sml = sine_voltage_src(omega=omega, mag=0.25, phi=0, bias=0.0)
+            self.v_vlop_sml.set_instance("VS")
+            ckt_sml.add_edge(vlop, GND, self.v_vlop_sml)
+
+            # Add VLon
+            self.v_vlon_sml = sine_voltage_src(omega=omega, mag=0.25, phi=math.pi, bias=0.0)
+            self.v_vlon_sml.set_instance("VS")
+            ckt_sml.add_edge(vlon, GND, self.v_vlon_sml)
+
+        else:
+            # Add VLop
+            self.v_vlop_sml = voltage_src()
+            self.v_vlop_sml.set_instance("VS")
+            self.v_vlop_sml.set_value(value=0)
+            ckt_sml.add_edge(vlop, GND, self.v_vlop_sml)
+
+            # Add VLon
+            self.v_vlon_sml = voltage_src()
+            self.v_vlon_sml.set_instance("VS")
+            self.v_vlon_sml.set_value(value=0)
+            ckt_sml.add_edge(vlon, GND, self.v_vlon_sml)
 
         # Add Rd1
         Rd1 = resistor()
@@ -128,6 +183,19 @@ class gilbert_cell_switching_stage():
         Rd2.set_instance("Rd2")
         Rd2.set_value(value=1e4)
         self.rd2_ref_sml = ckt_sml.add_edge(GND, vfn, Rd2)
+
+        if sine_src:
+            # Add C1
+            C1 = capacitor()
+            C1.set_instance("C1")
+            C1.set_value(value=1e-12)
+            ckt_sml.add_edge(vfp, GND, C1)
+
+            # Add C2
+            C2 = capacitor()
+            C2.set_instance("C2")
+            C2.set_value(value=1e-12)
+            ckt_sml.add_edge(vfn, GND, C2)
 
     def set_iref(self, iref):
         self.iref_n.set_value(value=iref)

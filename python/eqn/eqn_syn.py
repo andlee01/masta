@@ -58,6 +58,11 @@ class Circuit:
 
         return self.num_edges - 1
 
+    def get_internal_node(self):
+        self.internal_node_count -= 1
+
+        return (self.internal_node_count + 1)
+
     def get_edge_info(self, edge_ref):
 
        for (u,v,d) in self.G.edges(data=True):
