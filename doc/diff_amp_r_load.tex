@@ -1,0 +1,43 @@
+\documentclass{standalone}
+
+\usepackage{tikz}
+\usepackage[europeanresistors,americaninductors,americancurrents,siunitx]{circuitikz}
+
+\begin{document}
+ \begin{circuitikz}
+
+    \draw (2,-2) node[ground](GND){};
+    \draw (0,4) node[vcc](VCC){$V_{CC}$};
+    \draw (4,4) node[vcc](VCC_M){$V_{CC}$};
+
+    % Load Resistors
+    %\draw (S_M1) to[short] ++(2,0) to[R, l^=${R_O}_{M1}$] ++(0,-2) to[short] (D_M1);
+
+    % The FET transistor
+    \draw (0,0) node[nmos, xscale=1, anchor=S](F){} node[below left,  yshift=-0.3cm] at (F) {M1};   
+    \draw (4,0) node[nmos, xscale=-1,  anchor=S](G){} node[below right, yshift=-0.3cm] at (G) {M2};
+    
+    % VCC to Load Resistors to drain
+    \draw (VCC) to[short] ++(0,0) to[R, l^=${R_L}_{P}$] ++(0,-2) to[short] (F.D);
+    \draw (VCC_M) to[short] ++(0,0) to[R, l^=${R_L}_{N}$] ++(0,-2) to[short] (G.D);
+
+    % Connect gates
+    \draw (F.S) to[short] (G.S);
+
+    % iref
+    \draw (F.S) to[short] ++(2,0) to[I, l^=$i_{REF}$] ++(0,-2) to[short] (GND);
+    \draw (F.S) to[short] ++(2,0) node[circ] {} node[left] {};
+
+    % Voltage source
+    \draw (F.G) to[short] ++(0,-2) node[ground](GND_VP){};
+    \draw (GND_VP) to[V, v=${V_{LO}}_{P}$] (F.G);
+
+    \draw (G.G) to[short] ++(0,-2) node[ground](GND_VN){};
+    \draw (GND_VN) to[V, v_=${V_{LO}}_{N}$] (G.G);
+
+    % Vf labels
+    \draw (F.D) to[short] ++(0,0.5) node[circ] {} node[left] {} to[short] ++(1,0) node[ocirc] {} node[right] {${V_{F}}_{P}$};
+    \draw (G.D) to[short] ++(0,0.5) node[circ] {} node[left] {} to[short] ++(-1,0) node[ocirc] {} node[left] {${V_{F}}_{N}$};
+
+ \end{circuitikz}
+ \end{document}

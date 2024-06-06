@@ -94,6 +94,10 @@ def trim(tstart, s, t):
 
     t_end_trimmed = t_trimmed[-1]
 
+    #return t[-1], s, t
+
+    #s_trimmed = s_trimmed - np.mean(s_trimmed)
+
     return t_end_trimmed, s_trimmed, t_trimmed
 
 def sweep_vlo(nw, vlo_sweep, vlo_bias, iref_val):
@@ -126,50 +130,34 @@ def sweep_vlo(nw, vlo_sweep, vlo_bias, iref_val):
 
     return vf_out
 
-def trimmed_fft(vf_out, tr, N, tstart):
+def trimmed_fft(vf_out, tr, tstart, A=1):
 
     # Trim first 1us of transient to remove waveform until circuit in steady state
     t_end_trimmed, vf_out_trimmed, tr_trimmed = trim(tstart, vf_out, tr)
+    N = len(tr_trimmed)
     timestep_trimmed = t_end_trimmed / N
 
-    # New equally spaced time points for trimmed transient time
-    tr = np.linspace(0, t_end_trimmed, N)
+    vf_out = vf_out_trimmed
 
-    # Resample the trimmed Vf_out at the equally spaced time points
-    vf_out = np.interp(tr, tr_trimmed, vf_out_trimmed)
+    # Window
+    window = np.hanning(len(vf_out))
+    #vf_out_windowed = window * vf_out
+    vf_out_windowed = vf_out
 
     # Calculate FFT
-    sp   = np.fft.fft(vf_out)
+    sp   = np.fft.fft(vf_out_windowed)
     freq = np.fft.fftfreq(N, d=timestep_trimmed)
 
+    mag = np.abs(sp) / (N/2)
+
     # FFT magnitude in dB
-    X =  20 * np.log10(np.abs(sp))
+    X =  20 * np.log10(mag / A)
+    return freq, X, N
 
-    return freq, X
+def intermodulation_test(omega, omega_1, mag, bias, iref_val, tend):
 
-def main():
-
-    vlo_bias = 2.0
-    vrf_bias = 1.5
-    iref_val = 200e-6
-
-    freq  = 1e6
-    omega = math.pi * 2 * freq
-
-
-
-
-
-    tend = 50e-6
-    N    = 5500
-    timestep = tend / N
-
-    # Intermodulation
-    # ---------------
-    vlo_diff  = 0.3
-    two_lrg_ac_params = {"omega_0": omega, "omega_1": 0.8 * omega, "mag": vlo_diff/2, "bias": vlo_bias}
+    two_lrg_ac_params = {"omega_0": omega, "omega_1": omega_1, "mag": mag/2, "bias": bias}
     nw = diff_amp_r_load_ntwrk(two_sine_src=True, **two_lrg_ac_params)
-    #nw.set_vlo_bias(bias=vlo_bias)
     nw.set_iref(iref_val)
 
     # Transient for large signal
@@ -180,7 +168,50 @@ def main():
     vf_out = yr[:,0] - yr[:,1]
 
     # Perform FFT
-    freq, X = trimmed_fft(vf_out, tr, N, 1e-6)
+    freq, X, N = trimmed_fft(vf_out, tr, 1e-6, mag/2)
+
+    return tr, yr, freq, X, vf_out, N
+
+def main():
+
+    vlo_bias = 2.0
+    vrf_bias = 1.5
+    iref_val = 200e-6
+
+    freq  = 1e6
+    omega = math.pi * 2 * freq
+
+    tend = 50e-6
+
+    # Intermodulation
+    # ---------------
+    vlo_diff_sweep = np.linspace(0.1, 0.3, 3)
+
+    fig, ax1 = plt.subplots()
+
+    for idx_vlo_diff, vlo_diff in enumerate(vlo_diff_sweep):
+        tr, yr, freq, X, vf_out, N = intermodulation_test(omega=omega, \
+                                                          omega_1=0.8*omega, \
+                                                          mag=vlo_diff, \
+                                                          bias=vlo_bias, \
+                                                          iref_val=iref_val, \
+                                                          tend=tend)
+
+        # Plot FFT
+        ax1.plot(freq[:N//2], X[:N//2], label="$Vlo$ = "+ str(vlo_diff))
+
+    ax1.axvline(x=1e6,   color="red",    linestyle="dotted", label="$\omega_0$ = 1 MHz")
+    ax1.axvline(x=0.8e6, color="green",  linestyle="dotted", label="$\omega_1$ = 0.8 MHz")
+    ax1.axvline(x=1.2e6, color="blue",   linestyle="dotted", label="$2\omega_0 - \omega_1$ = 1.2 MHz")
+    ax1.axvline(x=0.6e6, color="purple", linestyle="dotted", label="$2\omega_1 - \omega_0$ = 0.6 MHz")
+    plt.xscale('log')
+    plt.xlabel("f (Hz)")
+    plt.ylabel("$V_f$ (dBc)")
+    plt.title("FFT of $V_f$ For Large Signal Circuit Intermodulation Test")
+    plt.grid()
+    ax1.legend()
+    plt.show(block=False)
+    plt.savefig("../../doc/diff_amp_r_load_intermodulation_fft.svg", bbox_inches = 'tight')
 
     # Plot Vf_out
     fig, ax1 = plt.subplots()
@@ -190,18 +221,7 @@ def main():
     plt.title("$V_f$ Transient For Large Signal Circuit Intermodulation Test")
     plt.grid()
     plt.show(block=False)
-
-    # Plot FFT
-    fig, ax1 = plt.subplots()
-    ax1.plot(freq[:N//2], X[:N//2])
-    plt.xscale('log')
-    plt.xlabel("f (Hz)")
-    plt.ylabel("$V_f$ (db)")
-    plt.title("FFT of $V_f$ For Large Signal Circuit Intermodulation Test")
-    plt.grid()
-    plt.show(block=False)
-
-    #sys.exit(0)
+    plt.savefig("../../doc/diff_amp_r_load_intermodulation_trans.svg", bbox_inches = 'tight')
 
     # Non-linear Gain
     # ----------------
@@ -224,6 +244,7 @@ def main():
     plt.title("$V_{lo}$ vs $V_f$")
     plt.grid()
     plt.show(block=False)
+    plt.savefig("../../doc/diff_amp_r_load_non_linear_gain.svg", bbox_inches = 'tight')
 
     # Operating Point
     # ---------------
@@ -259,7 +280,7 @@ def main():
     vf_out_sml = yr_sml[:,0] - yr_sml[:,1]
 
     # Perform FFT
-    freq_sml, X_sml = trimmed_fft(vf_out_sml, tr_sml, N, 1e-6)
+    freq_sml, X_sml, N = trimmed_fft(vf_out_sml, tr_sml, 1e-6, vlo_diff/2)
 
     # Plot FFT
     fig, ax1 = plt.subplots()
@@ -289,7 +310,7 @@ def main():
     vf_out = yr[:,0] - yr[:,1]
 
     # Perform FFT
-    freq, X = trimmed_fft(vf_out, tr, N, 1e-6)
+    freq, X, N = trimmed_fft(vf_out, tr, 1e-6, vlo_diff/2)
 
     # Plot Vf_out
     fig, ax1 = plt.subplots()
@@ -299,16 +320,24 @@ def main():
     plt.title("$V_f$ Transient For Large Signal Circuit")
     plt.grid()
     plt.show(block=False)
+    plt.savefig("../../doc/diff_amp_r_load_harmonics_trans.svg", bbox_inches = 'tight')
 
     # Plot FFT
     fig, ax1 = plt.subplots()
     ax1.plot(freq[:N//2], X[:N//2])
+    ax1.axvline(x=1e6, color="red",    linestyle="dotted", label="1 MHz")
+    ax1.axvline(x=3e6, color="green",  linestyle="dotted", label="3 MHz")
+    ax1.axvline(x=5e6, color="blue",   linestyle="dotted", label="5 MHz")
+    ax1.axvline(x=7e6, color="purple", linestyle="dotted", label="7 MHz")
+    ax1.legend()
     plt.xscale('log')
     plt.xlabel("f (Hz)")
     plt.ylabel("$V_f$ (db)")
     plt.title("FFT of $V_f$ For Large Signal Circuit")
     plt.grid()
+    plt.savefig("../../doc/diff_amp_r_load_harmonics_fft.svg", bbox_inches = 'tight')
     plt.show()
+
 
 if __name__ == "__main__":
 
