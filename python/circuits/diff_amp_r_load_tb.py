@@ -8,7 +8,7 @@ from base_devices import ElementType, TwoPortElement
 from base_devices import *
 
 sys.path.append("../networks")
-from gilbert_cell import *
+#from gilbert_cell import *
 from diff_amp_r_load_ntwrk import *
 
 from scipy import optimize
@@ -93,10 +93,6 @@ def trim(tstart, s, t):
     s_trimmed = s[i:]
 
     t_end_trimmed = t_trimmed[-1]
-
-    #return t[-1], s, t
-
-    #s_trimmed = s_trimmed - np.mean(s_trimmed)
 
     return t_end_trimmed, s_trimmed, t_trimmed
 

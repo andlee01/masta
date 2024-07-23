@@ -27,7 +27,7 @@ class gilbert_cell_ntwrk():
 
         self.ckt = Circuit()
 
-        if sine_src:
+        if sine_src or pulse_src:
             self.vlo_omega = params["vlo_omega"]
             self.vlo_mag   = params["vlo_mag"]
             self.vlo_bias  = params["vlo_bias"]
@@ -52,6 +52,18 @@ class gilbert_cell_ntwrk():
             self.v_vlon.set_instance("VS")
             self.ckt.add_edge(vlon, GND, self.v_vlon)
 
+        elif pulse_src:
+
+            # Add VLop
+            self.v_vlop = pulse_voltage_src(T=1e-6, t_on=0.6e-6, t_r=100e-12, t_f=100e-12, t_del=0.25e-6, mag=4.0, bias=0.0)
+            self.v_vlop.set_instance("VS")
+            self.ckt.add_edge(vlop, GND, self.v_vlop)
+
+            # Add VLon
+            self.v_vlon = pulse_voltage_src(T=1e-6, t_on=0.6e-6, t_r=100e-12, t_f=100e-12, t_del=0.75e-6, mag=4.0, bias=0.0)
+            self.v_vlon.set_instance("VS")
+            self.ckt.add_edge(vlon, GND, self.v_vlon)
+
         # Add Vrfp
         self.v_vrfp = sine_voltage_src(omega=self.vrf_omega, mag=self.vrf_mag, phi=0, bias=self.vrf_bias)
         self.v_vrfp.set_instance("VS")
@@ -62,7 +74,7 @@ class gilbert_cell_ntwrk():
         self.v_vrfn.set_instance("VS")
         self.ckt.add_edge(vrfn, GND, self.v_vrfn)
 
-        if sine_src:
+        if sine_src or pulse_src:
             # Add C1
             C1 = capacitor()
             C1.set_instance("C1")
@@ -115,6 +127,15 @@ class gilbert_cell_ntwrk():
 
         if self.glbrt_cell.nmos_m1.ids.get_region(x) == 0 and self.glbrt_cell.nmos_m2.ids.get_region(x) == 0:
             return True
+        return False
+
+    def check_switching_cutoff(self, x):
+        if self.glbrt_cell.nmos_m4.ids.get_region(x) == -1 and \
+           self.glbrt_cell.nmos_m5.ids.get_region(x) == -1 and \
+           self.glbrt_cell.nmos_m6.ids.get_region(x) == -1 and \
+           self.glbrt_cell.nmos_m7.ids.get_region(x) == -1:
+            return True
+
         return False
 
     def get_vf_output(self, x):

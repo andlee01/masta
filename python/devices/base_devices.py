@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
+from scipy import signal
+
 import math
 
 class ElementType(Enum):
@@ -395,6 +397,64 @@ class sine_voltage_src(TwoPortElement):
 
     def get_voltage(self, scb):
         scb.v[self.ref] = self.bias + (self.mag * math.sin(self.omega * scb.t + self.phi))
+
+    def get_current(self, scb):
+        scb.i[self.ref] = scb.x[self.ref]
+
+    def get_dependent_current(self, scb):
+        return 0.0
+
+    def get_degen_current(self, scb):
+        return
+
+    def set_dependencies(self, ckt):
+        return
+
+    def set_dependencies(self, ckt):
+        return
+
+    def get_weight(self):
+        return 0
+
+    def get_dy(self, x, sys):
+        return sys
+
+    def get_ddt(self, scb):
+        scb.dv[self.ref] = 0
+
+class pulse_voltage_src(TwoPortElement):
+
+    def __init__(self, T=1e-6, t_on=0.5e-6, t_r=0, t_f=0, t_del=0, mag=0.6, bias=0):
+        TwoPortElement.__init__(self)
+
+        self.type = ElementType.voltage_src
+
+        self.t_on  = t_on
+        self.T     = T
+        self.t_r   = t_r
+        self.t_f   = t_f
+        self.t_del = t_del
+        self.mag   = mag
+        self.bias  = bias
+
+    def get_voltage(self, scb):
+
+        pulse_t = (scb.t + self.t_del) % self.T
+
+        if(pulse_t < self.t_on):
+            if(pulse_t < self.t_r):
+                F = (1/self.t_r)*pulse_t
+            elif(pulse_t >= self.t_on - self.t_f):
+                F = 1 - (1/self.t_f)*(pulse_t - (self.t_on - self.t_r))
+            else:
+                F = 1
+        else:
+            F = 0
+
+        scb.v[self.ref] = self.bias + (self.mag * F)
+        #print (scb.v[self.ref])
+        #print (scb.t)
+        #scb.v[self.ref] = 0.0
 
     def get_current(self, scb):
         scb.i[self.ref] = scb.x[self.ref]
