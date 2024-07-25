@@ -8,7 +8,6 @@ from base_devices import ElementType, TwoPortElement
 from base_devices import *
 
 sys.path.append("../networks")
-#from gilbert_cell import *
 from diff_amp_r_load_ntwrk import *
 
 from scipy import optimize
