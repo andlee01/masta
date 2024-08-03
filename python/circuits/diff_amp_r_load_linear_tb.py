@@ -54,15 +54,15 @@ def saturation_test():
     nw.set_iref(iref_val)
     nw.set_vlo_bias(bias=bias)
 
-    vdiff_sweep  = np.arange(-0.1, 0.1, 0.001)
+    vdiff_sweep  = np.arange(-4e-3, 5e-3, 1e-4)
     v_vout       = np.zeros([len(vdiff_sweep)])
 
-    root_start = np.ones(nw.ckt.num_edges)
+    root_start = np.zeros(nw.ckt.num_edges)
 
     for idx, vdiff in enumerate(vdiff_sweep):
 
         nw.set_vlo(vdiff)
-        root       = optimize.root(circuit_eqn, root_start, args=(0, nw.ckt, 0), tol=1e-6)
+        root       = optimize.root(circuit_eqn, root_start, args=(0, nw.ckt, 0), tol=1e-9)
         root_start = root.x
         if not root.success:
             print (root.x)

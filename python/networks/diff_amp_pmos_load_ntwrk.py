@@ -133,7 +133,9 @@ class diff_amp_pmos_load_ntwrk():
         self.ckt_sml.init_circuit()
 
     def set_iref(self, iref):
+        return
         self.diff_amp.iref_n.set_value(value=iref)
+        #self.diff_amp.iref_out.set_value(value=iref)
 
     def set_iref_sml(self, iref):
         self.diff_amp.iref_n_sml.set_value(value=iref)

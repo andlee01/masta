@@ -31,13 +31,21 @@ class diff_amp_pmos_load(subckt):
                        "L"      : 2,
                        "W"      : 10}
 
+        nmos_params_out = {"KP"     : 120e-6,
+                           "vth"    : 0.8,
+                           "lambda" : 0.01,
+                           "L"      : 2,
+                           "W"      : 20}
+
         pmos_params = {"KP"     : 40e-6,
                        "vth"    : 0.9,
                        "lambda" : 0.0125,
                        "L"      : 2,
                        "W"      : 30}
 
-        n1 = ckt.get_internal_node()
+        n1     = ckt.get_internal_node()
+        vout   = ckt.get_internal_node()
+        vbias3 = ckt.get_internal_node()
 
         # Add nmos
         nodes = {"g": self.vlop, "d": self.vfp, "s": n1}
@@ -52,23 +60,56 @@ class diff_amp_pmos_load(subckt):
         self.nmos_m1.add(ckt)
 
         # Add Iref
-        self.iref_n = current_src()
-        self.iref_n.set_instance("iref_n")
-        ckt.add_edge(n1, self.GND, self.iref_n)
+        #self.iref_n = current_src()
+        #self.iref_n.set_instance("iref_n")
+        #ckt.add_edge(n1, self.GND, self.iref_n)
+
+        nodes = {"g": vbias3, "d": n1, "s": self.GND}
+        self.nmos_m6t = nmos_subckt(**nodes)
+        self.nmos_m6t.set_params(**nmos_params_out)
+        self.nmos_m6t.add(ckt)
 
         # Add pmos
-        nodes = {"g": self.vfp, "d": self.vfp, "s": self.VCC}
+        nodes = {"g": self.vfn, "d": self.vfn, "s": self.VCC}
         self.pmos_m3 = pmos_subckt(**nodes)
         self.pmos_m3.set_params(**pmos_params)
         self.pmos_m3.add(ckt)
 
-        self.pmos_m4_vsd_ref = ckt.num_edges
-
         # Add pmos
-        nodes = {"g": self.vfp, "d": self.vfn, "s": self.VCC}
+        nodes = {"g": self.vfn, "d": self.vfp, "s": self.VCC}
         self.pmos_m4 = pmos_subckt(**nodes)
         self.pmos_m4.set_params(**pmos_params)
         self.pmos_m4.add(ckt)
+
+        self.pmos_m4_vsd_ref = ckt.num_edges
+
+        # Add pmos
+        nodes = {"g": self.vfp, "d": vout, "s": self.VCC}
+        self.pmos_m7 = pmos_subckt(**nodes)
+        self.pmos_m7.set_params(**pmos_params)
+        self.pmos_m7.add(ckt)
+
+        # Add nmos
+        nodes = {"g": vbias3, "d": vout, "s": self.GND}
+        self.nmos_m8t = nmos_subckt(**nodes)
+        self.nmos_m8t.set_params(**nmos_params)
+        self.nmos_m8t.add(ckt)
+
+        self.v_bias3 = voltage_src()
+        self.v_bias3.set_value(value=1.5)
+        ckt.add_edge(vbias3, self.GND, self.v_bias3)
+
+        ## Add nmos
+        #nodes = {"g": self.vlon, "d": self.vfn, "s": n1}
+        #self.nmos_m1 = nmos_subckt(**nodes)
+        #self.nmos_m1.set_params(**nmos_params)
+        #self.nmos_m1.add(ckt)
+
+
+        ## Add Iref
+        #self.iref_out = current_src()
+        #self.iref_out.set_instance("iref_n")
+        #ckt.add_edge(vout, self.GND, self.iref_out)
 
     def add_small(self, op, ckt_sml, dyn=False, **nodes):
 
