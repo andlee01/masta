@@ -132,7 +132,7 @@ def main():
     np.random.seed(42)
 
     vin_omega = 1e6
-    vin_mag   = 0.005
+    vin_mag   = 0.1
 
     ac_params = {"omega_vp": vin_omega, "mag_vp": 0.0, "bias_vp": 0.0,
                  "omega_vn": vin_omega, "mag_vn": vin_mag,     "bias_vn": 0.0}
@@ -143,18 +143,21 @@ def main():
     #x0    = 4.0 * np.zeros (nw.ckt.get_num_sys_vars())
     x0    = np.zeros (nw.ckt.get_num_sys_vars(), dtype=np.float64)
 
-    tr, yr, v_vx_out = ode_solve(nw, tend=500e-6, tstep=50000, x0=x0)
+    tr, yr, v_vx_out = ode_solve(nw, tend=300e-6, tstep=5000, x0=x0)
 
     vout = yr[:,2]
 
     # Perform FFT
-    freq, X, N = trimmed_fft(vout, tr, 300e-6, vin_mag/2)
+    freq, X, N = trimmed_fft(vout, tr, 100e-6, vin_mag/2)
 
     fig, ax1 = plt.subplots()
     plt.grid()
 
-    ax1.plot(tr, yr[:,2],       color='blue',  label="$V_{OUT}$")
-    #ax1.plot(tr, v_vx_out,       color='blue',  label="$V_{OUT}$")
+#    ax1.plot(tr, yr[:,2],       color='blue',  label="$V_{OUT}$")
+
+    # Plot FFT
+    ax1.plot(freq[:N//2], X[:N//2], label="$Vlo$ = "+ str(vin_mag))
+
     ax1.set_ylabel('v')
     ax1.legend()
     plt.show(block=False)
@@ -162,8 +165,7 @@ def main():
     fig, ax1 = plt.subplots()
     plt.grid()
 
-    # Plot FFT
-    ax1.plot(freq[:N//2], X[:N//2], label="$Vlo$ = "+ str(vin_mag))
+    ax1.plot(tr, yr[:,2],       color='blue',  label="$V_{OUT}$")
 
     ax1.set_ylabel('v')
     ax1.legend()

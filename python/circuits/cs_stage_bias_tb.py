@@ -28,7 +28,7 @@ def dypc_litmus0(t, sys, nw):
     root_start = np.ones(nw.ckt.num_edges)
     vs = 1
 
-    root = optimize.root(circuit_eqn, root_start, args=(sys, nw.ckt, t), tol=1e-8)
+    root = optimize.root(circuit_eqn, root_start, args=(sys, nw.ckt, t), tol=1e-6)
     root_start = root.x
     if not root.success:
         print (t)
@@ -91,8 +91,6 @@ def main():
     ac_params = {"omega": vin_omega, "mag": vin_mag}
 
     nw = cs_stage_bias_ntwrk(sine_src=True, **ac_params)
-
-    print(nw.ckt.num_sys_vars)
 
     x0    = np.zeros (nw.ckt.get_num_sys_vars())
     tr, yr, v_vx_out = ode_solve(nw, tend=500e-6, tstep=10000, x0=x0)

@@ -30,7 +30,7 @@ class cs_stage_bias_ntwrk():
         self.cs_stage_bias = cs_stage_bias(**nodes)
         self.cs_stage_bias.add(self.ckt)
 
-        params = {"Cb": 1e-12, "Rb":1e3, "Ib":20e-6}
+        params = {"Cb": 1e-12, "Rb":1e3, "Ib":40e-6}
         self.cs_stage_bias.set_params(**params)
 
         # Add Vin

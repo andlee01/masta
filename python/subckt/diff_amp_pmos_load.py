@@ -19,6 +19,7 @@ class diff_amp_pmos_load(subckt):
         self.vlon = nodes["vlon"]
         self.vfp  = nodes["vfp"]
         self.vfn  = nodes["vfn"]
+        self.vout = nodes["vout"]
 
     def set_params(self, **params):
         pass
@@ -44,7 +45,6 @@ class diff_amp_pmos_load(subckt):
                        "W"      : 30}
 
         n1     = ckt.get_internal_node()
-        vout   = ckt.get_internal_node()
         vbias3 = ckt.get_internal_node()
 
         # Add nmos
@@ -84,13 +84,13 @@ class diff_amp_pmos_load(subckt):
         self.pmos_m4_vsd_ref = ckt.num_edges
 
         # Add pmos
-        nodes = {"g": self.vfp, "d": vout, "s": self.VCC}
+        nodes = {"g": self.vfp, "d": self.vout, "s": self.VCC}
         self.pmos_m7 = pmos_subckt(**nodes)
         self.pmos_m7.set_params(**pmos_params)
         self.pmos_m7.add(ckt)
 
         # Add nmos
-        nodes = {"g": vbias3, "d": vout, "s": self.GND}
+        nodes = {"g": vbias3, "d": self.vout, "s": self.GND}
         self.nmos_m8t = nmos_subckt(**nodes)
         self.nmos_m8t.set_params(**nmos_params)
         self.nmos_m8t.add(ckt)

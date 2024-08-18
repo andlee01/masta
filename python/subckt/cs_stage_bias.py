@@ -33,7 +33,7 @@ class cs_stage_bias(subckt):
         nmos_params = {"KP"     : 120e-6,
                        "vth"    : 0.8,
                        "lambda" : 0.01,
-                       "L"      : 2,
+                       "L"      : 40,
                        "W"      : 10}
 
         vb     = ckt.get_internal_node()
