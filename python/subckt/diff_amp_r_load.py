@@ -32,11 +32,15 @@ class diff_amp_r_load(subckt):
 
         n1 = ckt.get_internal_node()
 
+        self.nmos_m1_ref = ckt.num_edges
+
         # Add nmos
         nodes = {"g": self.vlop, "d": self.vfp, "s": n1}
         self.nmos_m1 = nmos_subckt(**nodes)
         self.nmos_m1.set_params(**nmos_params)
         self.nmos_m1.add(ckt)
+
+        self.nmos_m2_ref = ckt.num_edges
 
         # Add nmos
         nodes = {"g": self.vlon, "d": self.vfn, "s": n1}

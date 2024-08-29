@@ -46,7 +46,7 @@ def ode_solve(nw, tend=50e-12, tstep=10000, x0=0):
     t     = np.linspace(0, tend, tstep, dtype=np.float64)
     #t     = np.linspace(0, tend, tstep)
 
-    r = ode(dypc_litmus0).set_integrator('lsoda', method='bdf', atol=1e-6, rtol=1e-6)
+    r = ode(dypc_litmus0).set_integrator('lsoda', method='bdf', atol=1e-5, rtol=1e-5)
     r.set_initial_value(x0, 0.0)
     r.set_f_params(nw)
 
@@ -132,7 +132,7 @@ def main():
     np.random.seed(42)
 
     vin_omega = 1e6
-    vin_mag   = 0.005
+    vin_mag   = 0.09
 
     ac_params = {"omega_vp": vin_omega, "mag_vp": 0.0, "bias_vp": 0.0,
                  "omega_vn": vin_omega, "mag_vn": vin_mag,     "bias_vn": 0.0}
@@ -143,7 +143,7 @@ def main():
     #x0    = 4.0 * np.zeros (nw.ckt.get_num_sys_vars())
     x0    = np.zeros (nw.ckt.get_num_sys_vars(), dtype=np.float64)
 
-    tr, yr, v_vx_out = ode_solve(nw, tend=500e-6, tstep=50000, x0=x0)
+    tr, yr, v_vx_out = ode_solve(nw, tend=500e-6, tstep=5000, x0=x0)
 
     vout = yr[:,2]
 

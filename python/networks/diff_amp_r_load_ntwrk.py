@@ -37,8 +37,8 @@ class diff_amp_r_load_ntwrk():
             self.bias    = params["bias"]
 
         if dc_src:
-            self.bias = params["bias"]
-            self.mag  = params["mag"]
+            self.vlop_mag  = params["vlop_mag"]
+            self.vlon_mag  = params["vlon_mag"]
 
         # Add diff_amp
         nodes = {"vcc": VCC, "gnd": GND, "vlop": vlop, "vlon": vlon, "vfp": vfp, "vfn": vfn}
@@ -83,13 +83,13 @@ class diff_amp_r_load_ntwrk():
             # Add VLop
             self.v_vlop = voltage_src()
             self.v_vlop.set_instance("VS")
-            self.v_vlop.set_value(value=self.bias + self.mag)
+            self.v_vlop.set_value(value=self.vlop_mag)
             self.ckt.add_edge(vlop, GND, self.v_vlop)
 
             # Add VLon
             self.v_vlon = voltage_src()
             self.v_vlon.set_instance("VS")
-            self.v_vlon.set_value(value=self.bias - self.mag)
+            self.v_vlon.set_value(value=self.vlon_mag)
             self.ckt.add_edge(vlon, GND, self.v_vlon)
 
 
@@ -191,6 +191,10 @@ class diff_amp_r_load_ntwrk():
         self.v_vlon.set_value(value=self.v_lo_bias - vlo)
         self.v_vlop.set_value(value=self.v_lo_bias + vlo)
 
+    def set_vlo_dc(self, vlop, vlon):
+        self.v_vlon.set_value(value=vlon)
+        self.v_vlop.set_value(value=vlop)
+
     def set_vlo_sml(self, vlo):
         self.v_vlon_sml.set_value(value=-vlo)
         self.v_vlop_sml.set_value(value= vlo)
@@ -206,6 +210,52 @@ class diff_amp_r_load_ntwrk():
         if self.diff_amp.nmos_m1.ids.get_region(x) == 0 and self.diff_amp.nmos_m2.ids.get_region(x) == 0:
             return True
         return False
+
+    def get_nmos_m1_copy(self):
+        nmos_params = {"KP"     : 120e-6,
+                       "vth"    : 0.8,
+                       "lambda" : 0.01,
+                       "L"      : 2,
+                       "W"      : 10}
+
+        ids = vccs_l1_mosfet()
+        ids.set_params(KP=nmos_params["KP"], \
+                       vth=nmos_params["vth"], \
+                       l_lambda=nmos_params["lambda"], \
+                       L=nmos_params["L"], \
+                       W=nmos_params["W"])
+
+        ids.set_ref(0)
+        ids.set_vgs_ref(1)
+        ids.i_d_ref = 2
+
+        return ids
+
+    def get_nmos_m1_vltg(self, x):
+        self.scb.x = x
+
+        vds_edge = self.ckt.get_edge_info(self.diff_amp.nmos_m1_ref)
+        vds_edge.get_voltage(scb=self.scb)
+        vds = self.scb.v[self.diff_amp.nmos_m1_ref]
+
+        vgs_edge = self.ckt.get_edge_info(self.diff_amp.nmos_m1_ref+1)
+        vgs_edge.get_voltage(scb=self.scb)
+        vgs = self.scb.v[self.diff_amp.nmos_m1_ref+1]
+
+        return vds, vgs
+
+    def get_nmos_m2_vltg(self, x):
+        self.scb.x = x
+
+        vds_edge = self.ckt.get_edge_info(self.diff_amp.nmos_m2_ref)
+        vds_edge.get_voltage(scb=self.scb)
+        vds = self.scb.v[self.diff_amp.nmos_m2_ref]
+
+        vgs_edge = self.ckt.get_edge_info(self.diff_amp.nmos_m2_ref+1)
+        vgs_edge.get_voltage(scb=self.scb)
+        vgs = self.scb.v[self.diff_amp.nmos_m2_ref+1]
+
+        return vds, vgs
 
     def get_vf_output(self, x):
 
