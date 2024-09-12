@@ -611,6 +611,13 @@ class vccs_l1_mosfet(TwoPortElement):
         else:
             return -1
 
+    def get_op(self, x):
+
+        self.vds = x[self.ref]
+        self.vgs = x[self.vgs_ref]
+
+        return self.vds, self.vgs, x[self.i_x_ref]
+
     def get_weight(self):
         return 3
 

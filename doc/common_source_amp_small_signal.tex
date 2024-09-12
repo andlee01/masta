@@ -1,0 +1,32 @@
+\documentclass{standalone}
+
+\usepackage{tikz}
+\usepackage[europeanresistors,americaninductors,americancurrents,siunitx]{circuitikz}
+
+\input{../doc/cmos_small_signal.tex}
+
+\begin{document}
+
+ \begin{circuitikz}
+
+  \draw (2,-2) node[ground](GND){};
+  \draw (2,5) node[ground,rotate=180](GND_VCC){};
+
+  % Use the custom subcircuit macro with a position shift
+  \nmos{F}{shift={(0,0)}}{M1}  % Position the subcircuit at (0,0)
+
+  % VCC to Load Resistors to drain
+  \draw (GND_VCC) to[R, l^=$R_D$] (DF);
+
+  % Source to Rs to GND
+  \draw (SF) to[R, l^=$R_S$] (GND);
+
+  % Source to Rs to GND
+  \draw (GF) to[V, l_=$v_{in}$] ++(0,-3) to[short] (GND);
+  \draw (GND) node[circ] (){};
+
+  % Draw output Vo label
+  \draw (DF) to[short] ++(2,0) node[circ] {} to[short] ++(2,0) node[ocirc] {} node[right] {$v_{out}$};
+
+ \end{circuitikz}
+ \end{document}

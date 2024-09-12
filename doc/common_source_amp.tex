@@ -1,0 +1,31 @@
+\documentclass{standalone}
+
+\usepackage{tikz}
+\usepackage[europeanresistors,americaninductors,americancurrents,siunitx]{circuitikz}
+
+\begin{document}
+ \begin{circuitikz}
+
+    \draw (0,0) node[ground](GND){};
+    \draw (0,6) node[vcc](VCC){$V_{CC}$};
+
+    % The FET transistor   
+    \draw (0,2) node[nmos, xscale=1,  anchor=S](F){} node[below right, yshift=0.3cm] at (F) {M1};
+
+    % VCC to Load Resistors to drain
+    \draw (VCC) to[R, l^=$R_D$] (F.D);
+
+    % Gate to Vin
+    \draw (F.G) to[short] ++(-2,0) node[ocirc] {} node[left] {$V_{in}$};
+
+    % Source to Rs to GND
+    \draw (F.S) to[R, l^=$R_S$] (GND);
+
+   % Voltage label between gate and source
+   \draw (F.S) to[open, v^=$V_{GS}$] (F.G);
+
+   % Draw output Vo label
+   \draw (F.D) node[circ] {} to[short] ++(2,0) node[ocirc] {} node[right] {$V_{out}$};
+
+ \end{circuitikz}
+ \end{document}
