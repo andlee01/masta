@@ -697,6 +697,7 @@ class Circuit:
                 sys_var_ref = self.get_edge_info(elem).get_sys_var_ref()
 
                 str_expr = str(Vaux[elem_sel])
+                print (str_expr)
                 str_expr = regex.sub(r"\s+", "", str_expr)
 
                 # Parse the symbolic equation string into 2 lists
@@ -704,6 +705,9 @@ class Circuit:
                 # vect   = [u0 x0 x1 x2 x3]
                 coeffs = self.extract_numeric_values(str_expr)
                 vect   = self.separate_numeric_non_numeric(str_expr)
+
+                print (coeffs)
+                print (vect)
 
                 # Parse the above lists and update the state space A and B matrices
                 self.parse_sym_list(coeffs, vect, sys_var_ref, state=True)
@@ -714,6 +718,31 @@ class Circuit:
                     output_ref  = self.get_edge_info(elem).get_output_ref()
                     sys_var_ref = self.get_edge_info(elem).get_sys_var_ref()
                     self.C[output_ref][sys_var_ref] = 1
+
+                elif self.is_current_source(elem):
+                    print (elem)
+                    print ("*********************")
+                    assert self.get_edge_info(elem).get_is_const(), "Output current source must be constant"
+                    assert self.is_co_tree_elem(elem), "Output current source must be in co-tree"
+
+                    # Get the Bf matrix row
+                    bf_row = self.bf[elem ,:].copy()
+
+                    # Currently only sys var capacitors are supported in current source
+                    # output loops
+                    for elem_chk in range(self.num_edges):
+                        if bf_row[elem_chk] and elem_chk != elem:
+                            assert self.is_sys_var_cap(elem_chk), \
+                                "Only capacitors allowed in  loops with co-tree capacitors " + str(elem_chk)
+
+                    # Mask out references to self
+                    bf_row[elem] = 0
+
+                    for elem_loop in range(self.num_edges):
+                        if bf_row[elem_loop] != 0:
+                            output_ref  = self.get_edge_info(elem).get_output_ref()
+                            sys_var_ref = self.get_edge_info(elem_loop).get_sys_var_ref()
+                            self.C[output_ref][sys_var_ref] = -1 * bf_row[elem_loop]
 
     def parse_sym_list(self, coeffs, vect, sys_var_ref, state):
 
