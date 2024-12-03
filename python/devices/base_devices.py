@@ -395,6 +395,12 @@ class sine_voltage_src(TwoPortElement):
         self.phi      = phi
         self.bias     = bias
 
+    def set_params(self, omega, mag, phi, bias):
+        self.omega    = omega
+        self.mag      = mag
+        self.phi      = phi
+        self.bias     = bias
+
     def get_voltage(self, scb):
         scb.v[self.ref] = self.bias + (self.mag * math.sin(self.omega * scb.t + self.phi))
 
@@ -617,6 +623,30 @@ class vccs_l1_mosfet(TwoPortElement):
         self.vgs = x[self.vgs_ref]
 
         return self.vds, self.vgs, x[self.i_x_ref]
+
+    def get_op_t(self, x):
+
+        vds = x[self.ref]
+        vgs = x[self.vgs_ref]
+        ids = x[self.i_x_ref]
+
+        beta = self.KP * (self.W / self.L)
+
+        if self.get_region(x) == 0:
+            gm = math.sqrt(2 * beta * ids)
+        else:
+            gm = 0
+
+        vdssat = vgs - self.vth
+
+        idsat = (self.KP / 2) * (self.W / self.L) * vdssat**2
+
+        if self.get_region(x) == 0 and vdssat > 0.2:
+            ro = 1 / (self.l_lambda * idsat)
+        else:
+            ro = 0
+
+        return gm, ro
 
     def get_weight(self):
         return 3

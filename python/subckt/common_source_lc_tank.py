@@ -37,6 +37,7 @@ class common_source_lc_tank(subckt):
                        "W"      : 10}
 
         n1     = ckt.get_internal_node()
+        n2     = ckt.get_internal_node()
 
         # Add L
         self.L = inductor()
@@ -54,10 +55,15 @@ class common_source_lc_tank(subckt):
         ckt.add_edge(self.VCC, self.vout, self.C)
 
         # Add nmos
-        nodes = {"g": self.vin, "d": self.vout, "s": self.GND}
+        nodes = {"g": self.vin, "d": self.vout, "s": n2}
         self.nmos_m1 = nmos_subckt(**nodes)
         self.nmos_m1.set_params(**nmos_params)
         self.nmos_m1.add(ckt)
+
+        # Add Ibias
+        self.Ibias = current_src()
+        self.Ibias.set_value(100e-6)
+        ckt.add_edge(n2, self.GND, self.Ibias)
 
     def add_op(self, ckt_op):
 
@@ -67,6 +73,8 @@ class common_source_lc_tank(subckt):
                        "L"      : 2,
                        "W"      : 10}
 
+        n2     = ckt_op.get_internal_node()
+
         # Add R
         self.R_op = resistor()
         self.R_op.set_instance("R")
@@ -74,10 +82,15 @@ class common_source_lc_tank(subckt):
         ckt_op.add_edge(self.VCC, self.vout, self.R_op)
 
         # Add nmos
-        nodes = {"g": self.vin, "d": self.vout, "s": self.GND}
+        nodes = {"g": self.vin, "d": self.vout, "s": n2}
         self.nmos_m1_op = nmos_subckt(**nodes)
         self.nmos_m1_op.set_params(**nmos_params)
         self.nmos_m1_op.add(ckt_op)
+
+        # Add Ibias
+        self.Ibias_op = current_src()
+        self.Ibias_op.set_value(100e-6)
+        ckt_op.add_edge(n2, self.GND, self.Ibias_op)
 
 
     def add_small(self, op, ckt_sml, **nodes):
