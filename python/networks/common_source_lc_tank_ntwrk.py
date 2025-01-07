@@ -30,7 +30,7 @@ class common_source_lc_tank_ntwrk():
         self.common_source_lc_tank.set_params(**params)
 
         # Add Vin
-        self.v_vin = sine_voltage_src(omega=(40.46e3 * math.pi * 2), mag=0.2, phi=0, bias=4.0)
+        self.v_vin = sine_voltage_src(omega=(50.34e3 * math.pi * 2), mag=0.2, phi=0, bias=4.0)
         self.v_vin.set_instance("VS")
         self.ckt.add_edge(vin, GND, self.v_vin)
 
@@ -90,7 +90,7 @@ class common_source_lc_tank_ntwrk():
         self.common_source_lc_tank.add_small(op=op, ckt_sml=self.ckt_sml, **nodes)
 
         # Add Vin
-        self.v_vin_sml = sine_voltage_src(omega=(40.46e3 * math.pi * 2), mag=0.2, phi=0, bias=0.0)
+        self.v_vin_sml = sine_voltage_src(omega=(50.34e3 * math.pi * 2), mag=0.2, phi=0, bias=0.0)
         self.v_vin_sml.set_is_input()
         self.ckt_sml.add_edge(vin, GND, self.v_vin_sml)
 
@@ -168,8 +168,11 @@ class common_source_lc_tank_ntwrk():
     #
     #    return (5.0 - (v_rd1 + v_rd1_base)) - (5.0 - (v_rd2 + v_rd2_base))
 
-    def set_vin(self, vin):
-        self.v_vin.set_value(value=vin)
+    #def set_vin(self, vin):
+     #   self.v_vin.set_value(value=vin)
+
+    def set_vin(self, omega, mag, phi, bias):
+        self.v_vin.set_params(omega=omega, mag=mag, phi=phi, bias=bias)
 
     def set_vin_op(self, vin):
         self.v_vin_op.set_value(value=vin)
@@ -196,6 +199,21 @@ class common_source_lc_tank_ntwrk():
             return True
         return False
 
-    def get_op(self, x):
+    def get_ckt_op_op(self, x):
 
-        return self.common_source_amp.nmos_m1.ids.get_op(x)
+        return self.common_source_lc_tank.nmos_m1_op.ids.get_op_t(x)
+
+    def get_vout_op(self, x):
+
+        self.scb_op = x
+        self.scb_op.v = self.ckt_op.get_vm(x=self.scb_op.x, sys=0, t=0)
+
+        rd_edge = self.ckt_op.get_edge_info(self.common_source_lc_tank.R_op_ref)
+        rd_edge.get_voltage(scb=self.scb_op)
+        v_rd = self.scb_op.v[self.common_source_lc_tank.R_op_ref]
+
+        print (self.common_source_lc_tank.R_op_ref)
+
+        v_rd = x.x[0] * 3e3
+
+        return self.v_vs.get_value() - v_rd

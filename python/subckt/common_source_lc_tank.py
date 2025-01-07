@@ -75,6 +75,8 @@ class common_source_lc_tank(subckt):
 
         n2     = ckt_op.get_internal_node()
 
+        self.R_op_ref = ckt_op.num_edges
+
         # Add R
         self.R_op = resistor()
         self.R_op.set_instance("R")

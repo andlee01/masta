@@ -697,7 +697,6 @@ class Circuit:
                 sys_var_ref = self.get_edge_info(elem).get_sys_var_ref()
 
                 str_expr = str(Vaux[elem_sel])
-                print (str_expr)
                 str_expr = regex.sub(r"\s+", "", str_expr)
 
                 # Parse the symbolic equation string into 2 lists
@@ -705,9 +704,6 @@ class Circuit:
                 # vect   = [u0 x0 x1 x2 x3]
                 coeffs = self.extract_numeric_values(str_expr)
                 vect   = self.separate_numeric_non_numeric(str_expr)
-
-                print (coeffs)
-                print (vect)
 
                 # Parse the above lists and update the state space A and B matrices
                 self.parse_sym_list(coeffs, vect, sys_var_ref, state=True)

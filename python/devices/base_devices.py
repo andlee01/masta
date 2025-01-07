@@ -526,6 +526,10 @@ class vccs_l1_mosfet(TwoPortElement):
         self.L        = L
         self.W        = W
 
+        self.diode_threshold = 0.7
+        self.diode_is        = 1e-14
+        self.vt_diode        = 0.026
+
     def set_vgs_ref(self, vgs_ref):
         self.vgs_ref = vgs_ref
 
@@ -562,10 +566,21 @@ class vccs_l1_mosfet(TwoPortElement):
 
         return (self.vgs < self.vth)
 
+    def check_diode_threshold(self):
+
+        return self.vds < self.diode_threshold
+
+    def diode(self):
+
+        if self.check_diode_threshold():
+            self.diode_id = self.diode_is * (np.exp((-self.vds - self.diode_threshold) / self.vt_diode) - 1)
+        else:
+            self.diode_id = 0
+
     def sat(self):
 
-        if self.vds < 0 or self.vgs < 0:
-            return 0
+        #if self.vds < 0 or self.vgs < 0:
+        #    return 0
 
         vdssat = self.vgs - self.vth
 
@@ -576,8 +591,8 @@ class vccs_l1_mosfet(TwoPortElement):
 
     def tri(self):
 
-        if self.vds < 0 or self.vgs < 0:
-            return 0
+        #if self.vds < 0 or self.vgs < 0:
+        #    return 0
 
         id = self.KP * (self.W / self.L) * \
             ( ((self.vgs - self.vth) * self.vds) - (self.vds**2 / 2))
@@ -598,12 +613,36 @@ class vccs_l1_mosfet(TwoPortElement):
         self.vds = scb.v[self.ref]
         self.vgs = scb.v[self.vgs_ref]
 
+        sign = 1
+        #self.diode()
+        if self.vds < 0:
+            self.vgs = self.vgs - self.vds
+            #self.vgs = -1 * self.vgs
+            self.vds = -1 * self.vds
+            #self.vgs = self.vgs - self.vds
+            sign = -1
+
+        #self.vgs = np.abs(self.vgs)
+
+        #self.diode()
+
+        #if self.vds < 0:
+        #    sign = -1
+        #    #self.vgs, self.vds = self.vgs - self.vds, -self.vds  # Swap vgs and vds to model reverse conduction
+        #    self.vgs, self.vds = self.vgs, -self.vds  # Swap vgs and vds to model reverse conduction
+        #    self.print_stats()
+
+
         if self.check_tri():
             scb.i[self.i_d_ref] = self.tri()
         elif self.check_sat():
             scb.i[self.i_d_ref] = self.sat()
         else:
             scb.i[self.i_d_ref] = (1e-9 * self.vds)
+
+        scb.i[self.i_d_ref] = sign * scb.i[self.i_d_ref]
+        #print (self.diode_id)
+        #scb.i[self.i_d_ref] = sign * (scb.i[self.i_d_ref] + self.diode_id)
 
     def get_region(self, x):
 

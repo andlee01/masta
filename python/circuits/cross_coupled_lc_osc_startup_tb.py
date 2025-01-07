@@ -8,7 +8,7 @@ from base_devices import ElementType, TwoPortElement
 from base_devices import *
 
 sys.path.append("../networks")
-from common_source_lc_tank_ntwrk import *
+from cross_coupled_lc_osc_ntwrk import *
 
 from scipy import optimize
 from scipy.integrate import ode
@@ -82,14 +82,12 @@ def circuit_eqn(x, sys, ckt, t):
 
     return eqn_qf + eqn_bf
 
-def op_solve(nw, vin, root_start):
-
-    nw.set_vin_op(vin=vin)
+def op_solve(nw, root_start):
 
     root = optimize.root(circuit_eqn, root_start, args=(0, nw.ckt_op, 0), tol=1e-9)
     if not root.success:
         root_start = root.x
-        op_solve(ne, vin, root_start)
+        op_solve(nw, root_start)
 
     vout = nw.get_vout(x=root.x)
 
@@ -250,170 +248,82 @@ def plot_load_line(ids, vds_sweep, vin_op_sweep, degen_op, tri_op, Rd, Rs, block
 def main():
 
 
-    # HERE
-    params = {"L": 10e-3, "R":2e-3, "C":1e-9}
-
-    vin_sweep    = np.linspace(0.0, 5.0, 1000)
-    vin_op_sweep = np.linspace(0.0, 5.0, 11)
-    vds_sweep    = np.linspace(0.0, 5.0, 1000)
-
-    nw_lc_tank = common_source_lc_tank_ntwrk(**params)
-
-    x0    = np.zeros (nw_lc_tank.ckt.get_num_sys_vars())
-    tr, yr = ode_solve(nw_lc_tank.ckt, tend=1000e-6, tstep=10000, x0=x0)
-
-    # Operating point
-    nw_lc_tank.add_op_ckt()
-    root_start = np.ones(nw_lc_tank.ckt_op.num_edges)
-    _, g = op_solve(nw=nw_lc_tank, vin=4.0, root_start=root_start)
-
-    op = nw_lc_tank.ckt_op.scb
-    op.x = g
-
-    print (g)
-    print(op.x)
-
-    # Small signal
-    nw_lc_tank.add_sml_ckt(op=op)
-
-    x0    = np.zeros (nw_lc_tank.ckt_sml.get_num_sys_vars())
-    tr_sml, yr_sml = ode_solve(nw_lc_tank.ckt_sml, tend=1000e-6, tstep=10000, x0=x0)
-
-    # State Space
-    nw_lc_tank.ckt_sml.get_ss()
-
-    nw_lc_tank.ckt_sml.C[0][0] = -1
-
-    x0 = nw_lc_tank.ckt_sml.get_lti_const_x0(x0)
-    sys = ct.ss(nw_lc_tank.ckt_sml.A, nw_lc_tank.ckt_sml.B, nw_lc_tank.ckt_sml.C, nw_lc_tank.ckt_sml.D)
-
-    print ("kkkkk")
-
-    print (nw_lc_tank.ckt_sml.B[0])
-    #system = StateSpace(nw_lc_tank.ckt_sml.A, nw_lc_tank.ckt_sml.B[0], nw_lc_tank.ckt_sml.C, nw_lc_tank.ckt_sml.D)
-
-    print (nw_lc_tank.ckt_sml.bf)
-    print (nw_lc_tank.ckt_sml.C)
+    R = [2e-3, 2, 20, 200, 1e3, 1.2e3, 2e3, 3e3]
 
     fstep    = 10000
     fstart   = 2 * math.pi * 1e3
     fstop    = 2 * math.pi * 10e6
     omega    = np.linspace(fstart, fstop, fstep)
 
-    tstep = 10000
-    t     = np.linspace(0, 1e-3, tstep)
+    mag_lst   = []
+    phase_lst = []
+    omega_lst = []
 
-    T, yout = ct.step_response(sys, output=0, T=t, X0=x0)
+    for R_idx, R_osc in enumerate(R):
 
-    single_out = True
+        # HERE
+        params = {"L": 10e-3, "R":R_osc, "C":1e-9}
 
-    if single_out:
-        outputs = np.zeros(len(yout))
-        for i in range(len(outputs)):
-            outputs[i] = yout[i]
-    else:
-        outputs = np.zeros(len(yout[0][0]))
-        for i in range(len(outputs)):
-            outputs[i] = yout[0][0][i]
+        nw_lc_tank = cross_coupled_lc_osc_ntwrk(**params)
 
-    fig, ax1 = plt.subplots()
-    plt.plot(T, outputs)
-    plt.show(block=False)
+        # Operating point
+        nw_lc_tank.add_op_ckt()
+        root_start = np.ones(nw_lc_tank.ckt_op.num_edges)
+        _, g = op_solve(nw=nw_lc_tank, root_start=root_start)
 
-    mag, phase, omega_out = ct.freqresp(sys, omega=omega)
+        op = nw_lc_tank.ckt_op.scb
+        op.x = g
 
-    #w, H = freqresp(system, w=omega)
+        # Small signal
+        nw_lc_tank.add_sml_ckt(op=op)
 
-    if single_out:
-        mag_out = np.zeros(len(mag))
-        for i in range(len(mag)):
-            mag_out[i] = 20 * math.log(mag[i])
-    else:
-        mag_out = np.zeros(len(mag[0][0]))
-        for i in range(len(mag)):
-            mag_out[i] = 20 * math.log(mag[0][0][i])
+        # State Space
+        nw_lc_tank.ckt_sml.get_ss()
 
-    fig, ax1 = plt.subplots()
-    plt.xscale("log")
-    plt.yscale("log")
-    #ax1.plot(omega_out, mag_out)
-    if single_out:
-        ax1.plot(omega_out, mag)
-    else:
-        ax1.plot(omega_out, mag[0][0])
-    plt.show(block=False)
+        x0    = np.zeros (nw_lc_tank.ckt_sml.get_num_sys_vars())
+        x0 = nw_lc_tank.ckt_sml.get_lti_const_x0(x0)
+        sys = ct.ss(nw_lc_tank.ckt_sml.A, nw_lc_tank.ckt_sml.B, nw_lc_tank.ckt_sml.C, nw_lc_tank.ckt_sml.D)
 
-    fig, ax1 = plt.subplots()
-    plt.xscale("log")
-    #plt.yscale("log")
-    #ax1.plot(omega_out, mag_out)
-    if single_out:
-        ax1.plot(omega_out, phase)
-    else:
-        ax1.plot(omega_out, phase[0][0])
-    plt.show(block=False)
+        single_out = True
+
+        mag, phase, omega_out = ct.freqresp(sys, omega=omega)
+
+        if single_out:
+            mag_out = 20 * np.log10(np.abs(mag))
+            phase_out = phase
+        else:
+            mag_out   = 20 * np.log10(np.abs(mag[1, 0, :]))
+            phase_out = phase[1, 0, :]
+
+        mag_lst.append(mag_out)
+        phase_lst.append(phase_out)
+        omega_lst.append(omega_out)
 
     fig, ax1 = plt.subplots()
     plt.grid()
-
-    ax1.plot(tr, yr[:,0],       color='blue',  label="$V_{C}$")
-    ax1.set_ylabel('v')
+    for R_idx, R_osc in enumerate(R):
+        ax1.semilogx(omega_lst[R_idx], mag_lst[R_idx], label="$R = $" + str(R_osc))
     ax1.legend()
     plt.show(block=False)
 
     fig, ax1 = plt.subplots()
     plt.grid()
-
-    ax1.plot(tr, yr[:,1],       color='blue',  label="$i_{L}$")
-    ax1.set_ylabel('i')
+    for R_idx, R_osc in enumerate(R):
+        ax1.semilogx(omega_lst[R_idx], phase_lst[R_idx], label="$R = $" + str(R_osc))
     ax1.legend()
-    plt.show(block=False)
+    plt.show(block=True)
 
-    fig, ax1 = plt.subplots()
-    plt.grid()
 
-    ax1.plot(tr_sml, yr_sml[:,0],       color='blue',  label="$V_{C}$")
-    ax1.set_ylabel('v')
-    ax1.legend()
-    plt.show(block=False)
+    #plt.xscale("log")
+    ##plt.yscale("log")
+    ##ax1.plot(omega_out, mag_out)
+    #if single_out:
+    #    ax1.plot(omega_out, phase)
+    #else:
+    #    ax1.plot(omega_out, phase[0][0])
+    #plt.show(block=True)
 
-    fig, ax1 = plt.subplots()
-    plt.grid()
 
-    ax1.plot(tr_sml, yr_sml[:,1],       color='blue',  label="$i_{L}$")
-    ax1.set_ylabel('i')
-    ax1.legend()
-    plt.show()
-
-    #nw_degen1 = common_source_amp_ntwrk(src_degen=True,  **params)
-    #
-    #sat0_op, tri0_op, degen0_op = plot_vin_reponse(nw_degen=nw_degen0, vin_sweep=vin_sweep, vin_op_sweep=vin_op_sweep, degen=False)
-    #sat0_op, tri1_op, degen1_op = plot_vin_reponse(nw_degen=nw_degen1, vin_sweep=vin_sweep, vin_op_sweep=vin_op_sweep, degen=True)
-    #
-    #vds_sweep   = np.linspace(0.0, 5.0, 1000)
-    #
-    #
-    #nmos_params = {"KP"     : 120e-6,
-    #               "vth"    : 0.8,
-    #               "lambda" : 0.01,
-    #               "L"      : 10,
-    #               "W"      : 20}
-    #
-    #ids = vccs_l1_mosfet()
-    #ids.set_params(KP=nmos_params["KP"], \
-    #               vth=nmos_params["vth"], \
-    #               l_lambda=nmos_params["lambda"], \
-    #               L=nmos_params["L"], \
-    #               W=nmos_params["W"])
-    #
-    #ids.set_ref(0)
-    #ids.set_vgs_ref(1)
-    #ids.i_d_ref = 2
-    #
-    #
-    #plot_load_line(ids=ids, vds_sweep=vds_sweep, vin_op_sweep=vin_op_sweep, degen_op=degen0_op, tri_op=tri0_op, Rd=5e3, Rs=0, block=False)
-    #
-    #plot_load_line(ids=ids, vds_sweep=vds_sweep, vin_op_sweep=vin_op_sweep, degen_op=degen1_op, tri_op=tri1_op, Rd=5e3, Rs=5e3, block=True)
 
 if __name__ == "__main__":
 
