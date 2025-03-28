@@ -45,3 +45,9 @@ The negative feedback serves to improve amplifier linearity. As $i_{DS} \propto 
 ![title][def5]
 
 [def5]: common_source_amp_small_signal.svg
+
+![title][def6]
+
+[def6]: common_source_amp_gm.svg
+
+Note that even though $i_{DS}$ is nonlinear in the saturation region (particularly noticable on $g_{m_0}$) the transconductance appears linear. This is due to the square-root dependence of $g_m$ on $i_{DS}$, which tends to smooth out the nonlinearity of $i_{DS}$.

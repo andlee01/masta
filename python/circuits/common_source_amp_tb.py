@@ -247,6 +247,78 @@ def plot_load_line(ids, vds_sweep, vin_op_sweep, degen_op, tri_op, Rd, Rs, block
         plt.savefig("../../doc/common_source_amp_loadline.svg", bbox_inches = 'tight')
     #plt.show(block=block)
 
+def calc_small_signal_gain(nw, vin, vin_delta):
+
+    vin_sweep    = np.linspace(vin - vin_delta/2, vin + vin_delta/2, 50)
+    vout         = np.zeros(len(vin_sweep))
+
+    root_start = np.ones(nw.ckt.num_edges)
+    _, x = op_solve(nw, vin, root_start)
+    op = nw.ckt.scb
+    nw.add_sml_ckt(op=op)
+
+    for i in range(len(vin_sweep)):
+        root_start = np.ones(nw.ckt_sml.num_edges)
+        _, x = op_solve(nw, vin_sweep[i], root_start)
+
+        vout[i] = nw.get_sml_vout(x)
+
+    gain = (vout[-1] - vout[0]) / vin_delta
+
+    return vout, vin_sweep, gain
+
+def calc_small_signal_gm(nw, vin_sweep, num):
+
+    gm = np.zeros(len(vin_sweep))
+
+    for i in range(len(vin_sweep)):
+        root_start = np.ones(nw.ckt.num_edges)
+        _, x = op_solve(nw, vin_sweep[i], root_start)
+        op = nw.ckt.scb
+        op.x = x
+        op.i = nw.ckt.get_im(x=x, sys=0, t=0)
+        op.v = nw.ckt.get_vm(x=x, sys=0, t=0)
+        nw.add_sml_ckt(op=op)
+
+        gm[i], _ = nw.get_op_sml()
+
+        KP = 120e-6
+        L = 10
+        W = 20
+
+        beta = KP * (W / L)
+
+        #if num == 0:
+        #gm[i] = math.sqrt(2 * gm[i] * beta)
+
+    return gm
+
+def plot_small_signal_gain(vin, vout_degen0, vout_degen1):
+
+    fig, ax1 = plt.subplots()
+    plt.grid()
+
+    ax1.plot(vin, vout_degen0,  label="$V_{OUT_0}$")
+    ax1.plot(vin, vout_degen1,  label="$V_{OUT_1}$")
+
+    ax1.legend(loc='upper left', bbox_to_anchor=(1, 1))
+
+    plt.show(block=False)
+
+def plot_small_signal_gm(vin, gm0, gm1):
+
+    fig, ax1 = plt.subplots()
+    plt.grid()
+
+    ax1.plot(vin, gm0,  label="$g_{m_0}$")
+    ax1.plot(vin, gm1,  label="$g_{m_1}$")
+
+    ax1.legend(loc='upper left', bbox_to_anchor=(1, 1))
+
+    ax1.set_ylabel("$gm$")
+    ax1.set_xlabel("$V_{in}$")
+
+    plt.savefig("../../doc/common_source_amp_gm.svg", bbox_inches = 'tight')
 
 def main():
 
@@ -288,6 +360,18 @@ def main():
     plot_load_line(ids=ids, vds_sweep=vds_sweep, vin_op_sweep=vin_op_sweep, degen_op=degen0_op, tri_op=tri0_op, Rd=5e3, Rs=0, block=False)
 
     plot_load_line(ids=ids, vds_sweep=vds_sweep, vin_op_sweep=vin_op_sweep, degen_op=degen1_op, tri_op=tri1_op, Rd=5e3, Rs=5e3, block=True)
+
+    # Small signal
+    # ------------
+    #vout_degen0, vin, gain0 = calc_small_signal_gain(nw=nw_degen0, vin=2.5, vin_delta=0.2)
+    #vout_degen1, _  , gain1 = calc_small_signal_gain(nw=nw_degen1, vin=2.5, vin_delta=0.2)
+    #
+    #plot_small_signal_gain(vin=vin, vout_degen0=vout_degen0, vout_degen1=vout_degen1)
+
+    gm0 = calc_small_signal_gm(nw=nw_degen0, vin_sweep=vin_sweep, num=0)
+    gm1 = calc_small_signal_gm(nw=nw_degen1, vin_sweep=vin_sweep, num=1)
+
+    plot_small_signal_gm(vin=vin_sweep, gm0=gm0, gm1=gm1)
 
 if __name__ == "__main__":
 

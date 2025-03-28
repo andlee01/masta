@@ -78,6 +78,8 @@ class nmos_subckt(subckt):
         [gm, ro] = ids.get_op_t(op=op, i_x_ref=self.ids.i_x_ref, vgs_ref=self.vgs_ref)
         i_ro.set_value(ro)
 
+        self.ids_sml = ids
+
         if dyn:
             cox = self.cox_dash * self.W * self.L * self.scale**2
 

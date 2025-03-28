@@ -62,6 +62,31 @@ class common_source_amp(subckt):
             self.Rs.set_instance("Rs")
             ckt.add_edge(vdegen, self.GND, self.Rs)
 
-    def add_small(self, op, ckt_sml, dyn=False, **nodes):
+    def add_small(self, op, ckt_sml, **nodes):
 
-        pass
+        self.GND_sml  = nodes["gnd"]
+        self.vin_sml  = nodes["vin"]
+        self.vout_sml = nodes["vout"]
+
+        if self.src_degen:
+            vdegen_sml     = ckt_sml.get_internal_node()
+
+        # Add Rd
+        self.Rd_sml = resistor()
+        self.Rd_sml.set_instance("Rd")
+        ckt_sml.add_edge(self.GND_sml, self.vout_sml, self.Rd_sml)
+
+        self.rd_sml_ref = ckt_sml.num_edges
+
+        # Add nmos
+        if self.src_degen:
+            nodes = {"g": self.vin_sml, "d": self.vout_sml, "s": vdegen_sml}
+        else:
+            nodes = {"g": self.vin_sml, "d": self.vout_sml, "s": self.GND_sml}
+        self.nmos_m1.add_small(op=op, ckt_sml=ckt_sml, **nodes)
+
+        if self.src_degen:
+            # Add Rs
+            self.Rs_sml = resistor()
+            self.Rs_sml.set_instance("Rs")
+            ckt_sml.add_edge(vdegen_sml, self.GND_sml, self.Rs_sml)

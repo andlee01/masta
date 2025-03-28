@@ -728,7 +728,7 @@ class vccs_l1_mosfet_small(TwoPortElement):
 
         self.type = ElementType.current_src
 
-    def ro(self):
+    def get_ro(self):
 
         vdssat = self.vgs - self.vth
 
@@ -738,7 +738,7 @@ class vccs_l1_mosfet_small(TwoPortElement):
         return ro
 
     # equation 9.22
-    def gm(self):
+    def get_gm(self):
         beta = self.KP * (self.W / self.L)
 
         gm = math.sqrt(2 * beta * self.Ids)
@@ -751,18 +751,7 @@ class vccs_l1_mosfet_small(TwoPortElement):
         self.L        = L
         self.W        = W
 
-    def get_op(self, op, strt):
-
-        #self.Ids = op.i[self.i_x_ref]
-        #self.vgs = op.v[self.vgs_ref]
-
-
-        self.Ids = op.i[strt]
-        self.Ids = 20e-6
-        self.vgs = op.v[strt+1]
-
-        self.gm       = self.gm()
-        self.ro       = self.ro()
+    def get_op(self):
 
         return [self.gm, self.ro]
 
@@ -771,8 +760,8 @@ class vccs_l1_mosfet_small(TwoPortElement):
         self.Ids = op.i[i_x_ref]
         self.vgs = op.v[vgs_ref]
 
-        self.gm       = self.gm()
-        self.ro       = self.ro()
+        self.gm       = self.get_gm()
+        self.ro       = self.get_ro()
 
         return [self.gm, self.ro]
 

@@ -1,0 +1,35 @@
+% Define a custom nmos subcircuit with ports G D S
+% 
+% \nmos{F}{shift={(0,0)}}{M1}
+%
+% Argument #1 is the unqiue identifier. In example above #1 = F and ports called GF, DF and SF 
+% are created
+%
+% Arugment #2 is shift={(0,0)} which is applied to the scope and allows transformations 
+% and styles to everything inside it. 
+% Another example could be rotate=45, yscale=-1 (flip in y-axis)
+%
+% Argument #3 is the device ID that is printed on edge labels. In this example it is M1
+\newcommand{\nmos}[3]{
+  % Subcircuit with two ports: A (left) and B (right)
+  \begin{scope}[#2]
+
+    % Define input/output ports
+    \coordinate (G#1) at (0,1);  % Port G
+    \coordinate (D#1) at (2,3);  % Port D
+    \coordinate (S#1) at (2,1);  % Port S
+
+    % Draw M1
+    \draw (G#1) node[circ] (){};
+    \draw (D#1) node[circ] (){};
+    \draw (S#1) node[circ] (){};
+
+    % Ids
+    \draw (D#1) to[I, l^=$gm_{#3}$] (S#1);
+    % Ro
+    \draw (D#1) to[short] ++(2,0) to[R, l^=${R_O}_{#3}$] ++(0,-2) to[short] (S#1);
+    % Igs
+    \draw (G#1) to[I, v_=${v_{gs}}_{#3}$] (S#1);
+
+  \end{scope}
+}
