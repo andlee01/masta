@@ -41,7 +41,9 @@ class pmos_subckt(subckt):
 
         self.isd.set_vgs_ref(vgs_ref=self.vsg_ref)
 
-    def add_small(self, op, ckt_sml, **nodes):
+        return self.isd_ref, self.vsg_ref
+
+    def add_small(self, op, ckt_sml, output_resistance=True, **nodes):
 
         g = nodes["g"]
         d = nodes["d"]
@@ -55,22 +57,34 @@ class pmos_subckt(subckt):
                        L=self.L, \
                        W=self.W)
 
-        i_ro = resistor()
-        i_ro.set_type(ElementType.resistor)
-        i_ro.set_instance("Ro")
+        if output_resistance:
+            i_ro = resistor()
+            i_ro.set_instance("Ro")
 
         vsg = current_src()
-        vsg.set_type(ElementType.current_src)
         vsg.set_is_const()
         vsg.set_value(0.0)
         vsg.set_instance("VGS")
 
         isd_ref = ckt_sml.add_edge(s, d, isd)
         vsg_ref = ckt_sml.add_edge(s, g, vsg)
-        ckt_sml.add_edge(s, d, i_ro)
+
+        if output_resistance:
+            ckt_sml.add_edge(s, d, i_ro)
 
         isd.set_vgs_ref(vgs_ref=vsg_ref)
         isd.set_src_dep_ref(ref=vsg_ref)
 
         [gm, ro] = isd.get_op_t(op=op, i_x_ref=self.isd.i_x_ref, vgs_ref=self.vsg_ref)
-        i_ro.set_value(ro)
+
+        self.isd_sml = isd
+
+        if output_resistance:
+            i_ro.set_value(ro)
+
+        return isd_ref, vsg_ref
+    
+    def get_op_sml(self, op):
+        [gm, ro] = self.isd_sml.get_op_t(op=op, i_x_ref=self.isd.i_x_ref, vgs_ref=self.vsg_ref)
+
+        return gm, ro

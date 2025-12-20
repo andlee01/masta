@@ -12,7 +12,7 @@ from eqn_syn import Circuit, Scoreboard
 
 class diff_amp_pmos_load_ntwrk():
 
-    def __init__(self, sine_src=False, two_sine_src=False, dc_src=False, **params):
+    def __init__(self, sine_src=False, two_sine_src=False, dc_src=False, neg_feedback=False, pos_feedback=False, **params):
 
         # Nodes
         GND  = 0
@@ -42,19 +42,17 @@ class diff_amp_pmos_load_ntwrk():
 
         # Add diff_amp
         nodes = {"vcc": VCC, "gnd": GND, "vlop": vlop, "vlon": vlon, "vfp": vfp, "vfn": vfn}
-        self.diff_amp = diff_amp_pmos_load(**nodes)
+        self.diff_amp = diff_amp_pmos_load(neg_feedback, pos_feedback, **nodes)
         self.diff_amp.add(self.ckt)
 
         # Add VLop
         self.v_vlop = voltage_src()
         self.v_vlop.set_instance("VS")
-        self.v_vlop.set_value(value=self.bias + self.mag)
         self.ckt.add_edge(vlop, GND, self.v_vlop)
 
         # Add VLon
         self.v_vlon = voltage_src()
         self.v_vlon.set_instance("VS")
-        self.v_vlon.set_value(value=self.bias - self.mag)
         self.ckt.add_edge(vlon, GND, self.v_vlon)
 
         # Add Vcc
@@ -73,64 +71,54 @@ class diff_amp_pmos_load_ntwrk():
 
         # Nodes
         GND  = 0
-        VCC  = 1
-        n1   = 2
-        vlop = 3
-        vlon = 4
-        vfp  = 5
-        vfn  = 6
+        VCC  = 0
+        vlop = 1
+        vlon = 2
+        vfp  = 3
+        vfn  = 4
 
         self.ckt_sml = Circuit()
 
         nodes = {"vcc": GND, "gnd": GND, "vlop": vlop, "vlon": vlon, "vfp": vfp, "vfn": vfn}
         self.diff_amp.add_small(op=op, ckt_sml=self.ckt_sml, **nodes)
 
-        if sine_src:
-            self.omega = params["omega"]
-            self.mag   = params["mag"]
-            self.bias  = params["bias"]
+        # Add VLop
+        self.v_vlop_sml = voltage_src()
+        self.v_vlop_sml.set_instance("VS")
+        self.v_vlop_sml.set_value(value=0)
+        self.ckt_sml.add_edge(vlop, GND, self.v_vlop_sml)
 
-            self.vlop_bias = -(self.mag)
-            self.vlon_bias =  (self.mag)
-
-        if sine_src:
-            # Add VLop
-            self.v_vlop_sml = sine_voltage_src(omega=self.omega, mag=self.mag, phi=0, bias=self.vlop_bias)
-            self.v_vlop_sml.set_instance("VS")
-            self.ckt_sml.add_edge(vlop, GND, self.v_vlop_sml)
-
-            # Add VLon
-            self.v_vlon_sml = sine_voltage_src(omega=self.omega, mag=self.mag, phi=math.pi, bias=self.vlon_bias)
-            self.v_vlon_sml.set_instance("VS")
-            self.ckt_sml.add_edge(vlon, GND, self.v_vlon_sml)
-
-        else:
-            # Add VLop
-            self.v_vlop_sml = voltage_src()
-            self.v_vlop_sml.set_instance("VS")
-            self.v_vlop_sml.set_value(value=0)
-            self.ckt_sml.add_edge(vlop, GND, self.v_vlop_sml)
-
-            # Add VLon
-            self.v_vlon_sml = voltage_src()
-            self.v_vlon_sml.set_instance("VS")
-            self.v_vlon_sml.set_value(value=0)
-            self.ckt_sml.add_edge(vlon, GND, self.v_vlon_sml)
-
-        if sine_src:
-            # Add C1
-            C1 = capacitor()
-            C1.set_instance("C1")
-            C1.set_value(value=1e-12)
-            self.ckt_sml.add_edge(vfp, GND, C1)
-
-            # Add C2
-            C2 = capacitor()
-            C2.set_instance("C2")
-            C2.set_value(value=1e-12)
-            self.ckt_sml.add_edge(vfn, GND, C2)
+        # Add VLon
+        self.v_vlon_sml = voltage_src()
+        self.v_vlon_sml.set_instance("VS")
+        self.v_vlon_sml.set_value(value=0)
+        self.ckt_sml.add_edge(vlon, GND, self.v_vlon_sml)
 
         self.ckt_sml.init_circuit()
+
+    def set_params(self, **params):
+        self.diff_amp.set_params(**params)
+
+        self.v_vlop.set_value(params["Vlop"])
+        self.v_vlon.set_value(params["Vlon"])
+    
+    def set_params_sml(self, **params):
+        self.diff_amp.set_params_sml(**params)
+
+        self.v_vlop_sml.set_value(params["Vlop"])
+        self.v_vlon_sml.set_value(params["Vlon"])
+
+    def get_mos_vltg(self, x):
+        return x[self.diff_amp.isd_ref_m3], x[self.diff_amp.vsg_ref_m3], \
+               x[self.diff_amp.isd_ref_m4], x[self.diff_amp.vsg_ref_m4], \
+               x[self.diff_amp.ids_ref_m1], x[self.diff_amp.vgs_ref_m1], \
+               x[self.diff_amp.ids_ref_m2], x[self.diff_amp.vgs_ref_m2]
+
+    def get_mos_vltg_sml(self, x):
+        return x[self.diff_amp.isd_ref_sml_m3], x[self.diff_amp.vsg_ref_sml_m3], \
+               x[self.diff_amp.isd_ref_sml_m4], x[self.diff_amp.vsg_ref_sml_m4], \
+               x[self.diff_amp.ids_ref_sml_m1], x[self.diff_amp.vgs_ref_sml_m1], \
+               x[self.diff_amp.ids_ref_sml_m2], x[self.diff_amp.vgs_ref_sml_m2]
 
     def set_iref(self, iref):
         return

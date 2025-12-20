@@ -12,8 +12,8 @@
     \draw (4,4) node[vcc](VCC_M){$V_{CC}$};
 
     % The FET transistor
-    \draw (0,3) node[pmos, xscale=-1, anchor=S](F){} node[below left,  yshift=0.3cm] at (F) {M1};   
-    \draw (4,3) node[pmos, xscale=1,  anchor=S](G){} node[below right, yshift=0.3cm] at (G) {M2};
+    \draw (0,4) node[pmos, xscale=-1, anchor=S](F){} node[below left,  yshift=0.3cm] at (F) {M1};   
+    \draw (4,4) node[pmos, xscale=1,  anchor=S](G){} node[below right, yshift=0.3cm] at (G) {M2};
 
     % Vcc Connection
     \draw (F.S) to[short] (VCC);

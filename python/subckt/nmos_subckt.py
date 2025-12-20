@@ -46,7 +46,9 @@ class nmos_subckt(subckt):
 
         self.ids.set_vgs_ref(vgs_ref=self.vgs_ref)
 
-    def add_small(self, op, ckt_sml, dyn=False, **nodes):
+        return self.ids_ref, self.vgs_ref
+
+    def add_small(self, op, ckt_sml, dyn=False, output_resistance=True, **nodes):
 
         g = nodes["g"]
         d = nodes["d"]
@@ -60,8 +62,9 @@ class nmos_subckt(subckt):
                        L=self.L, \
                        W=self.W)
 
-        i_ro = resistor()
-        i_ro.set_instance("Ro")
+        if output_resistance:
+            i_ro = resistor()
+            i_ro.set_instance("Ro")
 
         vgs = current_src()
         vgs.set_is_const()
@@ -70,13 +73,17 @@ class nmos_subckt(subckt):
 
         ids_ref = ckt_sml.add_edge(d, s, ids)
         vgs_ref = ckt_sml.add_edge(g, s, vgs)
-        ckt_sml.add_edge(d, s, i_ro)
+
+        if output_resistance:
+            ckt_sml.add_edge(d, s, i_ro)
 
         ids.set_vgs_ref(vgs_ref=vgs_ref)
         ids.set_src_dep_ref(ref=vgs_ref)
 
         [gm, ro] = ids.get_op_t(op=op, i_x_ref=self.ids.i_x_ref, vgs_ref=self.vgs_ref)
-        i_ro.set_value(ro)
+
+        if output_resistance:
+            i_ro.set_value(ro)
 
         self.ids_sml = ids
 
@@ -94,3 +101,10 @@ class nmos_subckt(subckt):
             Cgd = capacitor()
             Cgd.set_value(Cgd_val)
             ckt_sml.add_edge(g, d, Cgd)
+
+        return ids_ref, vgs_ref
+    
+    def get_op_sml(self, op):
+        [gm, ro] = self.ids_sml.get_op_t(op=op, i_x_ref=self.ids.i_x_ref, vgs_ref=self.vgs_ref)
+
+        return gm, ro

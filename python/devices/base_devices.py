@@ -740,7 +740,6 @@ class vccs_l1_mosfet_small(TwoPortElement):
     # equation 9.22
     def get_gm(self):
         beta = self.KP * (self.W / self.L)
-
         gm = math.sqrt(2 * beta * self.Ids)
         return gm
 
