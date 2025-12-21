@@ -9,11 +9,13 @@ from subckt import *
 
 class pmos_subckt(subckt):
 
-    def __init__(self, **nodes):
+    def __init__(self, instance: str = "M_{1}", **nodes):
 
         self.g = nodes["g"]
         self.d = nodes["d"]
         self.s = nodes["s"]
+
+        self.instance = instance
 
     def set_params(self, **params):
         self.KP       = params["KP"]
@@ -50,7 +52,7 @@ class pmos_subckt(subckt):
         s = nodes["s"]
 
         isd = vccs_l1_mosfet_small()
-        isd.set_instance("IDS")
+        isd.set_instance("i_{SD_{" +self.instance + "}}")
         isd.set_params(KP=self.KP, \
                        vth=self.vth, \
                        l_lambda=self.l_lambda, \
@@ -59,12 +61,12 @@ class pmos_subckt(subckt):
 
         if output_resistance:
             i_ro = resistor()
-            i_ro.set_instance("Ro")
+            i_ro.set_instance("R_{o_{" + self.instance + "}}")
 
         vsg = current_src()
         vsg.set_is_const()
         vsg.set_value(0.0)
-        vsg.set_instance("VGS")
+        vsg.set_instance("i_{SG_{" +self.instance + "}}")
 
         isd_ref = ckt_sml.add_edge(s, d, isd)
         vsg_ref = ckt_sml.add_edge(s, g, vsg)

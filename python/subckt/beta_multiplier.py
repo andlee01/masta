@@ -11,13 +11,14 @@ from pmos_subckt import *
 
 class beta_multiplier(subckt):
 
-    def __init__(self, **nodes):
+    def __init__(self, instance: str = "B_{1}", **nodes):
 
         self.VCC    = nodes["vcc"]
         self.GND    = nodes["gnd"]
         self.vbiasp = nodes["vbiasp"]
         self.vbiasn = nodes["vbiasn"]
 
+        self.instance = instance
 
     def set_params(self, **params):
 
@@ -56,7 +57,7 @@ class beta_multiplier(subckt):
                      "W"      : 30}
 
         nodes = {"g": self.vbiasp, "d": self.vbiasn, "s": self.VCC}
-        self.pmos_m3 = pmos_subckt(**nodes)
+        self.pmos_m3 = pmos_subckt(instance = self.instance + "M_3", **nodes)
         self.pmos_m3.set_params(**m3_params)
         self.isd_ref_m3, self.vsg_ref_m3 = self.pmos_m3.add(ckt)
 
@@ -67,7 +68,7 @@ class beta_multiplier(subckt):
                      "W"      : 30}
 
         nodes = {"g": self.vbiasp, "d": self.vbiasp, "s": self.VCC}
-        self.pmos_m4 = pmos_subckt(**nodes)
+        self.pmos_m4 = pmos_subckt(instance = self.instance + "M_4", **nodes)
         self.pmos_m4.set_params(**m4_params)
         self.isd_ref_m4, self.vsg_ref_m4 = self.pmos_m4.add(ckt)
 
@@ -81,7 +82,7 @@ class beta_multiplier(subckt):
                      "W"      : 10 if res_m2 else 40}
 
         nodes = {"g": self.vbiasn, "d": self.vbiasn, "s": self.GND if res_m2 else n1}
-        self.nmos_m1 = nmos_subckt(**nodes)
+        self.nmos_m1 = nmos_subckt(instance = self.instance + "M_1", **nodes)
         self.nmos_m1.set_params(**m1_params)
         self.ids_ref_m1, self.vgs_ref_m1 = self.nmos_m1.add(ckt)
 
@@ -92,13 +93,14 @@ class beta_multiplier(subckt):
                      "W"      : 40 if res_m2 else 10}
 
         nodes = {"g": self.vbiasn, "d": self.vbiasp, "s": n1 if res_m2 else self.GND}
-        self.nmos_m2 = nmos_subckt(**nodes)
+        self.nmos_m2 = nmos_subckt(instance = self.instance + "M_2", **nodes)
         self.nmos_m2.set_params(**m2_params)
         self.ids_ref_m2, self.vgs_ref_m2 = self.nmos_m2.add(ckt)
 
         # Add Rn
         self.Rref_idx = ckt.num_edges
         self.Rref = resistor()
+        self.Rref.set_instance(self.instance + "R_{ref}")
         ckt.add_edge(n1, self.GND, self.Rref)
 
         # Start-up
@@ -161,4 +163,5 @@ class beta_multiplier(subckt):
         # Add Rn
         self.Rref_sml_idx = ckt_sml.num_edges
         self.Rref_sml = resistor()
+        self.Rref_sml.set_instance("R_{{ref}_{" + self.instance + "}}")
         ckt_sml.add_edge(n1, self.GND, self.Rref_sml)

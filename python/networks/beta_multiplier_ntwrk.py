@@ -24,12 +24,12 @@ class beta_multiplier_ntwrk():
 
         # Add beta multiplier
         nodes = {"vcc": VCC, "gnd": GND, "vbiasp": vbiasp, "vbiasn": vbiasn}
-        self.beta_mult = beta_multiplier(**nodes)
+        self.beta_mult = beta_multiplier(instance = "B_{1}", **nodes)
         self.beta_mult.add(ckt=self.ckt, output_resistance=output_resistance, res_m2=res_m2)
 
         # Add Vs
         self.v_vs = voltage_src()
-        self.v_vs.set_instance("VS")
+        self.v_vs.set_instance("V_S")
         self.v_vs.set_value(5.0)
         self.ckt.add_edge(VCC, GND, self.v_vs)
 
@@ -55,7 +55,7 @@ class beta_multiplier_ntwrk():
 
         # Add Vs
         self.v_vs_sml = voltage_src()
-        self.v_vs_sml.set_instance("VS")
+        self.v_vs_sml.set_instance("V_S")
         self.v_vs_sml.set_value(0.0)
         self.ckt_sml.add_edge(VCC, GND, self.v_vs_sml)
 

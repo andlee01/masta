@@ -230,6 +230,24 @@ def plot_sweep(vs_sweep, results, suffix="ro", output_dir="../../doc"):
     )
 
 
+def quarto_math_block(equations):
+    """
+    Convert an array of equation strings into a Quarto-ready MathJax block.
+    """
+
+    lines = ["$$"]
+
+    for eq in equations:
+        lines.append(eq + r" \\")  # new line in MathJax
+
+    # Remove trailing \\ from last equation
+    if len(lines) > 1:
+        lines[-1] = lines[-1].rstrip(r" \\")
+
+    lines.append("$$")
+
+    return "\n".join(lines)
+
 # ------------------------------------------------------------------------------
 # Main
 # ------------------------------------------------------------------------------
@@ -245,24 +263,24 @@ def main():
     nw_no_ro_m1 = beta_multiplier_ntwrk(output_resistance=False, res_m2=False)
    
     # Solve OPs and build small-signal circuits
-    for net, label in [(nw_m2, "ro_m2"), (nw_no_ro_m2, "no_ro_m2"), (nw_m1, "ro_m1"), (nw_no_ro_m1, "no_ro_m1")]:
+    # for net, label in [(nw_m2, "ro_m2"), (nw_no_ro_m2, "no_ro_m2"), (nw_m1, "ro_m1"), (nw_no_ro_m1, "no_ro_m1")]:
 
-        results = sweep(net, lrg_vs_sweep)
-        plot_sweep(lrg_vs_sweep, results, suffix=label)
+    #     results = sweep(net, lrg_vs_sweep)
+    #     plot_sweep(lrg_vs_sweep, results, suffix=label)
 
-    # Solve OPs and build small-signal circuits
-    for net, label in [(nw_m2, "ro_m2_sml"), (nw_no_ro_m2, "no_ro_m2_sml"), (nw_m1, "ro_m1_sml"), (nw_no_ro_m1, "no_ro_m1_sml")]:
-        net.set_beta_multiplier_params(**params)
-        root_start = np.zeros(net.ckt.num_edges)
-        x = op_solve(net.ckt, root_start)
-        op = net.ckt.scb
-        net.add_sml_ckt(op=op)
+    # # Solve OPs and build small-signal circuits
+    # for net, label in [(nw_m2, "ro_m2_sml"), (nw_no_ro_m2, "no_ro_m2_sml"), (nw_m1, "ro_m1_sml"), (nw_no_ro_m1, "no_ro_m1_sml")]:
+    #     net.set_beta_multiplier_params(**params)
+    #     root_start = np.zeros(net.ckt.num_edges)
+    #     x = op_solve(net.ckt, root_start)
+    #     op = net.ckt.scb
+    #     net.add_sml_ckt(op=op)
 
-        results = sml_sweep(net, vs_sweep)
-        plot_sweep(vs_sweep, results, suffix=label)
+    #     results = sml_sweep(net, vs_sweep)
+    #     plot_sweep(vs_sweep, results, suffix=label)
 
     # Stability analysis
-    for net, label in [(nw_m2, "ro_m2")]:
+    for net, label in [(nw_m2, "ro_m2"), (nw_no_ro_m2, "no_ro_m2")]:
         net.set_beta_multiplier_params(**params)
         root_start = np.zeros(net.ckt.num_edges)
         x = op_solve(net.ckt, root_start)
@@ -272,7 +290,9 @@ def main():
         iref = net.get_Rref_current(x)
         print (iref)
 
-        print(net.ckt_sml.qf)
+        eqs = net.ckt_sml.build_mathjax_equations()
+        math_block = quarto_math_block(eqs)
+        print(math_block)
 
         print(f"iref = {iref:.6f}")
 

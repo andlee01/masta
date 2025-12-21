@@ -1152,6 +1152,10 @@ class Circuit:
         self.get_bf_matrix()
         self.set_sys_var_ref()
 
+        self.num_elems = self.num_edges
+        self.qf_plot = self.qf.copy()
+        self.bf_plot = self.bf.copy()
+
         self.degen_mtrx = 0
 
         if not self.lti:
@@ -1164,3 +1168,51 @@ class Circuit:
             self.set_lti_outputs()
 
         self.scb = Scoreboard(num_edges=self.num_edges, num_sys_vars=self.num_sys_vars, degen_mtrx=self.degen_mtrx)
+
+    def build_mathjax_equations(self):
+        """
+        Build MathJax equations from Qf (currents) and Bf (voltages).
+        Returns a list of strings.
+        """
+
+        equations = []
+        #N = self.num_elems
+
+        def process_matrix(M, prefix):
+            nonlocal equations
+
+            # Convert to array and truncate rows and columns
+            #M = np.asarray(M)[:N, :N]
+
+            for row in M:
+                if np.allclose(row, 0):
+                    continue  # ignore all-zero rows
+
+                terms = []
+                for i, coeff in enumerate(row):
+                    if coeff == 0:
+                        continue
+
+                    elem = self.get_edge_info(i)
+                    name = elem.get_instance()
+                    var = f"{prefix}_{{{name}}}"
+
+                    if coeff == 1:
+                        terms.append(f"{var}")
+                    elif coeff == -1:
+                        terms.append(f"- {var}")
+                    else:
+                        terms.append(f"{coeff} {var}")
+
+                # Join terms carefully to preserve signs
+                expr = " + ".join(terms).replace("+ -", "- ")
+                equations.append(f"0 &= {expr}")
+
+        # Qf → currents
+        process_matrix(self.qf_plot, "i")
+
+        # Bf → voltages
+        process_matrix(self.bf_plot, "v")
+
+        return equations
+

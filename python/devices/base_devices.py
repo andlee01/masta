@@ -21,6 +21,7 @@ class TwoPortElement(ABC):
         self.value       = 0.0
         self.type        = ElementType.undefined
         self.sys_var     = False
+        self.instance    = "default"
 
         # Edge reference in circuit
         self.ref         = -1
@@ -120,6 +121,9 @@ class TwoPortElement(ABC):
 
     def set_instance(self, instance):
         self.instance = instance
+
+    def get_instance(self):
+        return self.instance
 
     def set_ref(self, ref):
         self.ref = ref
