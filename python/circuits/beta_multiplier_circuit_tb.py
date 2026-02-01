@@ -20,9 +20,11 @@ DEFAULT_RREF = 6.5e3
 DEFAULT_VS = 5.0
 SWEEP_RANGE = (-0.2, 0.2, 100)
 LRG_SWEEP_RANGE = (4, 6, int(1000))
+RREF_SWEEP_RANGE = (2.5e3, 6.5e3, int(10))
 TEND = 50e-12
 TSTEP = 10000
 TOL = 1e-6
+M2_SWEEP_RANGE = (0, 1e-3, 100)
 
 # ------------------------------------------------------------------------------
 # Core circuit equations
@@ -44,6 +46,42 @@ def op_solve(ckt, root_start):
         print("⚠️ OP solver did not converge, retrying with updated initial guess")
         return op_solve(ckt, root.x)
     return root.x
+
+def dypc_litmus0(t, sys, ckt):
+
+    root_start = np.ones(ckt.num_edges)
+    vs = 1
+
+    root = optimize.root(circuit_eqn, root_start, args=(sys, ckt, t), tol=1e-9, method='lm')
+    root_start = root.x
+    if not root.success:
+        print (root.x)
+        sys.exit(0)
+
+    return ckt.get_dy(x=root.x)
+
+def ode_solve(ckt, tend=50e-12, tstep=10000, x0=0):
+
+    num_sys_vars    = ckt.get_num_sys_vars()
+
+    t     = np.linspace(0, tend, tstep)
+
+    r = ode(dypc_litmus0).set_integrator('lsoda', method='bdf', atol=1e-9, rtol=1e-9)
+    r.set_initial_value(x0, 0.0)
+    r.set_f_params(ckt)
+
+    y    = np.empty((tstep, num_sys_vars))
+    y[0] = x0
+
+    k = 1
+    while r.successful() and k < tstep:
+        r.integrate(t[k])
+
+        y[k] = r.y
+
+        k += 1
+
+    return t, y
 
 # ------------------------------------------------------------------------------
 # Large-signal analysis
@@ -152,6 +190,55 @@ def sml_sweep(nw, vs_sml_sweep):
         "irref":  irref_sml_sweep
     }
 
+def sml_sweep_m2(nw, vs_sml_sweep, Rref):
+    """Perform small-signal sweep of beta-multiplier network."""
+    N = len(vs_sml_sweep)
+
+    # Preallocate arrays
+    isd_m3_sml_sweep = np.zeros(N)
+    vsg_m3_sml_sweep = np.zeros(N)
+    isd_m4_sml_sweep = np.zeros(N)
+    vsg_m4_sml_sweep = np.zeros(N)
+    ids_m1_sml_sweep = np.zeros(N)
+    vgs_m1_sml_sweep = np.zeros(N)
+    ids_m2_sml_sweep = np.zeros(N)
+    vgs_m2_sml_sweep = np.zeros(N)
+    irref_sml_sweep  = np.zeros(N)
+
+    for vs_idx, vs in enumerate(vs_sml_sweep):
+        nw.set_source(source="gate_m2", val=vs)
+        params = {"Rref": Rref, "Vs": 0}
+        nw.set_beta_multiplier_sml_params(**params)
+
+        root_start = np.ones(nw.ckt_sml.num_edges)
+        x = op_solve(nw.ckt_sml, root_start)
+
+        irref_sml_sweep[vs_idx] = nw.get_Rref_sml_current(x)
+
+        # flatten each returned value to scalar
+        vals = [np.atleast_1d(v).item() for v in nw.get_mos_vltg_sml(x)]
+        (isd_m3_sml_sweep[vs_idx],
+         vsg_m3_sml_sweep[vs_idx],
+         isd_m4_sml_sweep[vs_idx],
+         vsg_m4_sml_sweep[vs_idx],
+         ids_m1_sml_sweep[vs_idx],
+         vgs_m1_sml_sweep[vs_idx],
+         ids_m2_sml_sweep[vs_idx],
+         vgs_m2_sml_sweep[vs_idx]) = vals
+
+    return {
+        "isd_m3": isd_m3_sml_sweep,
+        "vsg_m3": vsg_m3_sml_sweep,
+        "isd_m4": isd_m4_sml_sweep,
+        "vsg_m4": vsg_m4_sml_sweep,
+        "ids_m1": ids_m1_sml_sweep,
+        "vgs_m1": vgs_m1_sml_sweep,
+        "ids_m2": ids_m2_sml_sweep,
+        "vgs_m2": vgs_m2_sml_sweep,
+        "irref":  irref_sml_sweep
+    }
+
+
 
 import os
 import plotly.graph_objects as go
@@ -229,6 +316,36 @@ def plot_sweep(vs_sweep, results, suffix="ro", output_dir="../../doc"):
         "Reference Current vs Sweep Voltage"
     )
 
+def plot_tr(tr, yr, filename="plot.html", title="Plot of yr vs tr", x_label="tr", y_label="yr"):
+    """
+    Plots yr vs tr using Plotly and saves the plot as an HTML file.
+
+    Parameters:
+    - tr: list or array-like, values for x-axis
+    - yr: list or array-like (can be 2D), values for y-axis
+    - filename: str, name of output HTML file
+    - title: str, plot title
+    - x_label: str, label for x-axis
+    - y_label: str, label for y-axis
+    """
+    # Convert to numpy array and flatten yr
+    tr = np.array(tr).flatten()
+    yr = np.array(yr).flatten()
+    
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=tr, y=yr, mode='lines+markers', name='yr vs tr'))
+    
+    fig.update_layout(
+        title=title,
+        xaxis_title=x_label,
+        yaxis_title=y_label,
+        template="plotly_white"
+    )
+    
+    fig.write_html(filename)
+    print(f"Plot saved as {filename}")
+
+
 
 def quarto_math_block(equations):
     """
@@ -254,19 +371,78 @@ def quarto_math_block(equations):
 
 def main():
     vs_sweep = np.linspace(*SWEEP_RANGE)
+    m2_sweep = np.linspace(*M2_SWEEP_RANGE)
     lrg_vs_sweep = np.linspace(*LRG_SWEEP_RANGE)
-    params = {"Rref": DEFAULT_RREF, "Vs": DEFAULT_VS}
+    Rref_sweep = np.linspace(*RREF_SWEEP_RANGE)
+    params = {"Rref": DEFAULT_RREF, "Vs": DEFAULT_VS, "Cstray": 100e-12}
 
-    nw_m2       = beta_multiplier_ntwrk(output_resistance=True,  res_m2=True)
-    nw_no_ro_m2 = beta_multiplier_ntwrk(output_resistance=False, res_m2=True)
-    nw_m1       = beta_multiplier_ntwrk(output_resistance=True,  res_m2=False)
-    nw_no_ro_m1 = beta_multiplier_ntwrk(output_resistance=False, res_m2=False)
+    nw_m2             = beta_multiplier_ntwrk(output_resistance=True,  res_m2=True)
+    nw_m2_ss          = beta_multiplier_ntwrk(output_resistance=True,  res_m2=True)
+
+    nw_no_ro_m2       = beta_multiplier_ntwrk(output_resistance=False, res_m2=True)
+    nw_no_ro_m2_stray = beta_multiplier_ntwrk(output_resistance=True,  res_m2=True, stray_capacitance=True)
+    nw_m1             = beta_multiplier_ntwrk(output_resistance=True,  res_m2=False)
+    nw_no_ro_m1       = beta_multiplier_ntwrk(output_resistance=False, res_m2=False)
    
     # Solve OPs and build small-signal circuits
     # for net, label in [(nw_m2, "ro_m2"), (nw_no_ro_m2, "no_ro_m2"), (nw_m1, "ro_m1"), (nw_no_ro_m1, "no_ro_m1")]:
 
     #     results = sweep(net, lrg_vs_sweep)
     #     plot_sweep(lrg_vs_sweep, results, suffix=label)
+
+    # Solve OPs and build small-signal circuits
+    # for net, base_label in [(nw_m2, "ro_m2_sml")]:
+    #     for Rref in Rref_sweep:
+
+    #         # Update parameters (including Rref)
+    #         params_with_rref = dict(params)
+    #         params_with_rref["Rref"] = Rref
+    #         net.set_beta_multiplier_params(**params_with_rref)
+
+    #         # Solve operating point
+    #         root_start = np.zeros(net.ckt.num_edges)
+    #         x = op_solve(net.ckt, root_start)
+    #         op = net.ckt.scb
+
+    #         # Build small-signal circuit with loop break
+    #         net.add_sml_ckt(op=op, gate_topology=net.gate_break_m1_m2())
+
+    #         # Run small-signal sweep
+    #         results = sml_sweep_m2(net, m2_sweep, Rref)
+
+    #         # Generate a unique label per Rref
+    #         label = f"{base_label}_Rref={Rref:g}"
+
+    #         plot_sweep(m2_sweep, results, suffix=label)
+
+    #Rref_sweep = np.linspace(6.5e3)
+
+    # Solve OPs and build SS small-signal circuits
+    for net, base_label in [(nw_m2_ss, "ro_m2_sml")]:
+        #for Rref in Rref_sweep:
+            
+            Rref = 6.5e3
+
+            # Update parameters (including Rref)
+            params_with_rref = dict(params)
+            params_with_rref["Rref"] = Rref
+            net.set_beta_multiplier_params(**params_with_rref)
+
+            # Solve operating point
+            root_start = np.zeros(net.ckt.num_edges)
+            x = op_solve(net.ckt, root_start)
+            op = net.ckt.scb
+
+            # Build small-signal circuit with loop break
+            net.add_sml_ckt(op=op, \
+                            gate_topology=net.gate_break_m1_m2(), \
+                            degen_topology=net._capacitive_degen_topology(),
+                            output_topology=net._output_vds_m2_topology())
+
+            # State Space
+            net.ckt_sml.get_ss()
+
+    exit(1)
 
     # # Solve OPs and build small-signal circuits
     # for net, label in [(nw_m2, "ro_m2_sml"), (nw_no_ro_m2, "no_ro_m2_sml"), (nw_m1, "ro_m1_sml"), (nw_no_ro_m1, "no_ro_m1_sml")]:
@@ -279,8 +455,10 @@ def main():
     #     results = sml_sweep(net, vs_sweep)
     #     plot_sweep(vs_sweep, results, suffix=label)
 
+
+
     # Stability analysis
-    for net, label in [(nw_m2, "ro_m2"), (nw_no_ro_m2, "no_ro_m2")]:
+    for net, label in [(nw_m2, "ro_m2"), (nw_no_ro_m2, "no_ro_m2"), (nw_no_ro_m2_stray, "no_ro_m2_stray")]:
         net.set_beta_multiplier_params(**params)
         root_start = np.zeros(net.ckt.num_edges)
         x = op_solve(net.ckt, root_start)
@@ -288,11 +466,11 @@ def main():
         net.add_sml_ckt(op=op)
 
         iref = net.get_Rref_current(x)
-        print (iref)
+        #print (iref)
 
-        eqs = net.ckt_sml.build_mathjax_equations()
-        math_block = quarto_math_block(eqs)
-        print(math_block)
+        #eqs = net.ckt_sml.build_mathjax_equations()
+        #math_block = quarto_math_block(eqs)
+        #print(math_block)
 
         print(f"iref = {iref:.6f}")
 
@@ -305,6 +483,28 @@ def main():
         print(f"m2 gm = {gm_m2:.6f}, ro = {ro_m2:.6f}")
         print(f"m3 gm = {gm_m3:.6f}, ro = {ro_m3:.6f}")
         print(f"m4 gm = {gm_m4:.6f}, ro = {ro_m4:.6f}")
+
+    params = {"Rref": DEFAULT_RREF, "Vs": 0.05, "Cstray": 100e-12}
+    nw_no_ro_m2_stray.set_beta_multiplier_sml_params(**params)
+    x0    = np.zeros (nw_no_ro_m2_stray.ckt_sml.get_num_sys_vars())
+    tr, yr = ode_solve(nw_no_ro_m2_stray.ckt_sml, tend=500e-9, tstep=10000, x0=x0)
+    print (yr)
+    plot_tr(tr, yr, filename="plot_beta_dyn.html")
+
+    exit (1)
+    for net, label in [(nw_m2, "ro_m2"), (nw_no_ro_m2, "no_ro_m2"), (nw_no_ro_m2_stray, "no_ro_m2_stray")]:
+        net.set_beta_multiplier_params(**params)
+        root_start = np.zeros(net.ckt.num_edges)
+        #x = op_solve(net.ckt, root_start)
+        #op = net.ckt.scb
+        net.add_sml_ckt(op=root_start)
+
+        #iref = net.get_Rref_current(x)
+        #print (iref)
+
+        eqs = net.ckt_sml.build_mathjax_equations()
+        math_block = quarto_math_block(eqs)
+        print(math_block)
 
 
 

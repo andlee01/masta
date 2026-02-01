@@ -12,7 +12,7 @@ from eqn_syn import Circuit, Scoreboard
 
 class beta_multiplier_ntwrk():
 
-    def __init__(self, output_resistance=True, res_m2=True):
+    def __init__(self, output_resistance=True, res_m2=True, stray_capacitance=False):
 
         # Nodes
         GND    = 0
@@ -25,7 +25,7 @@ class beta_multiplier_ntwrk():
         # Add beta multiplier
         nodes = {"vcc": VCC, "gnd": GND, "vbiasp": vbiasp, "vbiasn": vbiasn}
         self.beta_mult = beta_multiplier(instance = "B_{1}", **nodes)
-        self.beta_mult.add(ckt=self.ckt, output_resistance=output_resistance, res_m2=res_m2)
+        self.beta_mult.add(ckt=self.ckt, output_resistance=output_resistance, res_m2=res_m2, stray_capacitance=stray_capacitance)
 
         # Add Vs
         self.v_vs = voltage_src()
@@ -39,27 +39,41 @@ class beta_multiplier_ntwrk():
                               num_sys_vars=self.ckt.num_sys_vars, \
                               degen_mtrx=self.ckt.degen_mtrx)
 
-    def add_sml_ckt(self, op, output_resistance=True):
+    def add_sml_ckt(self, op, lti=False, gate_topology=None, degen_topology=None, output_topology=None):
 
         # Nodes
         GND    = 0
-        VCC    = 1
+        VCC    = 0
         vbiasn = 2
         vbiasp = 3
 
-        self.ckt_sml = Circuit()
+        self.ckt_sml = Circuit(lti=True)
 
         # Add beta multiplier
         nodes = {"vcc": VCC, "gnd": GND, "vbiasp": vbiasp, "vbiasn": vbiasn}
-        self.beta_mult.add_small(op=op, ckt_sml=self.ckt_sml, output_resistance=output_resistance, **nodes)
+        self.beta_mult.add_small(op=op, \
+                                 ckt_sml=self.ckt_sml, \
+                                    gate_topology=gate_topology, \
+                                        degen_topology=degen_topology, \
+                                            output_topology=output_topology, \
+                                                **nodes)
 
         # Add Vs
-        self.v_vs_sml = voltage_src()
-        self.v_vs_sml.set_instance("V_S")
-        self.v_vs_sml.set_value(0.0)
-        self.ckt_sml.add_edge(VCC, GND, self.v_vs_sml)
+        #self.v_vs_sml = voltage_src()
+        #self.v_vs_sml.set_instance("V_S")
+        #self.v_vs_sml.set_value(0.0)
+        #self.ckt_sml.add_edge(VCC, GND, self.v_vs_sml)
 
         self.ckt_sml.init_circuit()
+
+    def gate_break_m1_m2(self):
+        return self.beta_mult._broken_gate_m1_m2
+    
+    def _capacitive_degen_topology(self):
+        return self.beta_mult._capacitive_degen_topology
+    
+    def _output_vds_m2_topology(self):
+        return self.beta_mult._output_vds_m2_topology
 
     def get_Rref_current(self, x):
         return x[self.beta_mult.Rref_idx]
@@ -89,3 +103,6 @@ class beta_multiplier_ntwrk():
     def set_beta_multiplier_sml_params(self, **params):
         self.beta_mult.set_sml_params(**params)
         self.v_vs_sml.set_value(params["Vs"])
+
+    def set_source(self, source, val):
+        self.beta_mult.set_source(name=source, value=val)
