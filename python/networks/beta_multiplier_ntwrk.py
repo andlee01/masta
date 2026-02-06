@@ -43,11 +43,11 @@ class beta_multiplier_ntwrk():
 
         # Nodes
         GND    = 0
-        VCC    = 0
+        VCC    = 0 if lti else 1
         vbiasn = 2
         vbiasp = 3
 
-        self.ckt_sml = Circuit(lti=True)
+        self.ckt_sml = Circuit(lti=lti)
 
         # Add beta multiplier
         nodes = {"vcc": VCC, "gnd": GND, "vbiasp": vbiasp, "vbiasn": vbiasn}
@@ -69,6 +69,9 @@ class beta_multiplier_ntwrk():
     def gate_break_m1_m2(self):
         return self.beta_mult._broken_gate_m1_m2
     
+    def gate_break_m1_m2_closed(self):
+        return self.beta_mult._broken_gate_m1_m2_closed
+
     def _capacitive_degen_topology(self):
         return self.beta_mult._capacitive_degen_topology
     

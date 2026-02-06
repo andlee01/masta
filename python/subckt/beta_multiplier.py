@@ -166,9 +166,23 @@ class beta_multiplier(subckt):
         self.vtest = voltage_src()
         self.vtest.set_instance(f"V_test_{{{self.instance}}}")
         self.vtest.set_is_input()
-        self.vtest.set_value(0.0)  # small-signal source
+        self.vtest.set_value(1.0)  # small-signal source
 
         ckt_sml.add_edge(g2, self.GND, self.vtest)
+
+        self.test_sources["gate_m2"] = self.vtest
+
+        return self.vbiasn, g2
+    
+    def _broken_gate_m1_m2_closed(self, ckt_sml):
+        g2 = ckt_sml.get_internal_node()
+
+        self.vtest = voltage_src()
+        self.vtest.set_instance(f"V_test_{{{self.instance}}}")
+        self.vtest.set_is_input()
+        self.vtest.set_value(1.0)  # small-signal source
+
+        ckt_sml.add_edge(g2, self.vbiasn, self.vtest)
 
         self.test_sources["gate_m2"] = self.vtest
 
@@ -182,9 +196,11 @@ class beta_multiplier(subckt):
         ckt_sml.add_edge(degen_node, self.GND, self.Rref_sml)
 
     def _capacitive_degen_topology(self, degen_node, ckt_sml):
+
         # Add Rn
         self.Rref_sml_idx = ckt_sml.num_edges
         self.Rref_sml = resistor()
+        self.Rref_sml.set_value(6.5e3)
         self.Rref_sml.set_instance("R_{{ref}_{" + self.instance + "}}")
         ckt_sml.add_edge(degen_node, self.GND, self.Rref_sml)
 
@@ -199,7 +215,7 @@ class beta_multiplier(subckt):
         pass
 
     def _output_vds_m2_topology(self, n1, n2, ckt_sml):
-
+        
         self.vmeas = current_src()
         self.vmeas.set_is_const()
         self.vmeas.set_value(0.0)
@@ -254,4 +270,4 @@ class beta_multiplier(subckt):
         if output_topology is None:
             output_topology = self._default_output_topology
 
-        output_topology(self.vbiasn, self.GND, ckt_sml)
+        output_topology(self.vbiasp, self.GND, ckt_sml)

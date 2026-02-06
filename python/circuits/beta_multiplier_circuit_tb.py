@@ -3,6 +3,8 @@ import os
 import numpy as np
 import plotly.graph_objects as go
 import plotly.io as pio
+from plotly.subplots import make_subplots
+
 from scipy import optimize
 from scipy.integrate import ode
 
@@ -11,6 +13,9 @@ sys.path.extend(["../eqn", "../devices", "../networks"])
 from eqn_syn import Circuit, Scoreboard
 from base_devices import *
 from beta_multiplier_ntwrk import *
+
+import control as ct
+from scipy.signal import freqresp, StateSpace
 
 # ------------------------------------------------------------------------------
 # Configuration
@@ -365,6 +370,150 @@ def quarto_math_block(equations):
 
     return "\n".join(lines)
 
+def plot_bode_plotly(mag, phase, omega, *,
+                     single_out=True,
+                     output_idx=(0, 0),
+                     filename="bode_output.html"):
+    """
+    Plot magnitude and phase using Plotly and save to a standalone HTML file.
+
+    Parameters
+    ----------
+    mag : ndarray
+        Magnitude array from ct.freqresp
+    phase : ndarray
+        Phase array from ct.freqresp (radians)
+    omega : ndarray
+        Frequency vector (rad/s)
+    single_out : bool
+        True for SISO systems
+    output_idx : tuple
+        (output, input) index for MIMO systems
+    filename : str
+        Output HTML filename
+    """
+
+    if single_out:
+        mag_vec = mag
+        phase_vec = phase
+    else:
+        o, i = output_idx
+        mag_vec = mag[o][i]
+        phase_vec = phase[o][i]
+
+    mag_db = 20 * np.log10(mag_vec)
+    phase_deg = np.degrees(phase_vec)
+
+    fig = make_subplots(
+        rows=2, cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.08,
+        subplot_titles=("Magnitude (dB)", "Phase (deg)")
+    )
+
+    # Magnitude plot
+    fig.add_trace(
+        go.Scatter(
+            x=omega,
+            y=mag_db,
+            mode="lines",
+            name="Magnitude"
+        ),
+        row=1, col=1
+    )
+
+    # Phase plot
+    fig.add_trace(
+        go.Scatter(
+            x=omega,
+            y=phase_deg,
+            mode="lines",
+            name="Phase"
+        ),
+        row=2, col=1
+    )
+
+    fig.update_xaxes(
+        type="log",
+        title_text="Frequency (rad/s)",
+        row=1, col=1
+    )
+
+    fig.update_xaxes(
+        type="log",
+        title_text="Frequency (rad/s)",
+        row=2, col=1
+    )
+
+    fig.update_yaxes(
+        title_text="Magnitude (dB)",
+        row=1, col=1
+    )
+
+    fig.update_yaxes(
+        title_text="Phase (deg)",
+        row=2, col=1
+    )
+
+    fig.update_layout(
+        height=700,
+        width=900,
+        showlegend=False,
+        title_text=f"Bode Plot ({filename})"
+    )
+
+    fig.write_html(filename, include_plotlyjs="cdn")
+
+def plot_pz_plotly(sys, poles, zeros, filename="pz_plot.html"):
+
+    fig = go.Figure()
+
+    # Poles
+    fig.add_trace(go.Scatter(
+        x=np.real(poles),
+        y=np.imag(poles),
+        mode="markers",
+        marker=dict(symbol="x", size=10),
+        name="Poles"
+    ))
+
+    # Zeros
+    fig.add_trace(go.Scatter(
+        x=np.real(zeros),
+        y=np.imag(zeros),
+        mode="markers",
+        marker=dict(symbol="circle", size=10),
+        name="Zeros"
+    ))
+
+    # Axes
+    fig.add_shape(
+        type="line",
+        x0=min(np.real(poles.min()), -1),
+        x1=max(np.real(poles.max()), 1),
+        y0=0, y1=0,
+        line=dict(dash="dash", color="gray")
+    )
+
+    fig.add_shape(
+        type="line",
+        x0=0, x1=0,
+        y0=min(np.imag(poles.min()), -1),
+        y1=max(np.imag(poles.max()), 1),
+        line=dict(dash="dash", color="gray")
+    )
+
+    fig.update_layout(
+        title="Pole–Zero Map",
+        xaxis_title="Real Axis (σ)",
+        yaxis_title="Imaginary Axis (jω)",
+        width=700,
+        height=700,
+        showlegend=True
+    )
+
+    fig.write_html(filename, include_plotlyjs="cdn")
+
 # ------------------------------------------------------------------------------
 # Main
 # ------------------------------------------------------------------------------
@@ -375,6 +524,11 @@ def main():
     lrg_vs_sweep = np.linspace(*LRG_SWEEP_RANGE)
     Rref_sweep = np.linspace(*RREF_SWEEP_RANGE)
     params = {"Rref": DEFAULT_RREF, "Vs": DEFAULT_VS, "Cstray": 100e-12}
+
+    fstep    = 10000
+    fstart   = 2 * math.pi * 1e3
+    fstop    = 2 * math.pi * 100e6
+    omega    = np.linspace(fstart, fstop, fstep)
 
     nw_m2             = beta_multiplier_ntwrk(output_resistance=True,  res_m2=True)
     nw_m2_ss          = beta_multiplier_ntwrk(output_resistance=True,  res_m2=True)
@@ -419,28 +573,168 @@ def main():
 
     # Solve OPs and build SS small-signal circuits
     for net, base_label in [(nw_m2_ss, "ro_m2_sml")]:
-        #for Rref in Rref_sweep:
-            
-            Rref = 6.5e3
 
-            # Update parameters (including Rref)
-            params_with_rref = dict(params)
-            params_with_rref["Rref"] = Rref
-            net.set_beta_multiplier_params(**params_with_rref)
+        # -----------------------------
+        # Parameter setup (OP only once)
+        # -----------------------------
+        Rref = 6.5e3
 
-            # Solve operating point
-            root_start = np.zeros(net.ckt.num_edges)
-            x = op_solve(net.ckt, root_start)
-            op = net.ckt.scb
+        params_with_rref = dict(params)
+        params_with_rref["Rref"] = Rref
+        net.set_beta_multiplier_params(**params_with_rref)
 
-            # Build small-signal circuit with loop break
-            net.add_sml_ckt(op=op, \
-                            gate_topology=net.gate_break_m1_m2(), \
-                            degen_topology=net._capacitive_degen_topology(),
-                            output_topology=net._output_vds_m2_topology())
+        # Solve operating point
+        root_start = np.zeros(net.ckt.num_edges)
+        x = op_solve(net.ckt, root_start)
+        op = net.ckt.scb
 
-            # State Space
+        # -----------------------------
+        # Gate-topology configurations
+        # -----------------------------
+        gate_configs = [
+            {
+                "label": "open_loop",
+                "gate_topology": net.gate_break_m1_m2()
+            },
+            {
+                "label": "closed_loop",
+                "gate_topology": net.gate_break_m1_m2_closed()
+            }
+        ]
+
+        # -----------------------------
+        # Small-signal analyses
+        # -----------------------------
+        for cfg in gate_configs:
+
+            label = f"{base_label}_{cfg['label']}"
+
+            # Build small-signal circuit
+            net.add_sml_ckt(
+                op=op,
+                lti=True,
+                gate_topology=cfg["gate_topology"],
+                degen_topology=net._capacitive_degen_topology(),
+                output_topology=net._output_vds_m2_topology()
+            )
+
+            # Extract operating-point small-signal parameters
+            gm_m1, ro_m1 = net.beta_mult.nmos_m1.get_op_sml(op)
+            gm_m2, ro_m2 = net.beta_mult.nmos_m2.get_op_sml(op)
+            gm_m3, ro_m3 = net.beta_mult.pmos_m3.get_op_sml(op)
+            gm_m4, ro_m4 = net.beta_mult.pmos_m4.get_op_sml(op)
+
+            print(f"\n[{cfg['label']}]")
+            print(f"m1 gm = {gm_m1:.6f}, ro = {ro_m1:.6f}")
+            print(f"m2 gm = {gm_m2:.6f}, ro = {ro_m2:.6f}")
+            print(f"m3 gm = {gm_m3:.6f}, ro = {ro_m3:.6f}")
+            print(f"m4 gm = {gm_m4:.6f}, ro = {ro_m4:.6f}")
+
+            # -----------------------------
+            # State-space construction
+            # -----------------------------
             net.ckt_sml.get_ss()
+            sys = ct.ss(
+                net.ckt_sml.A,
+                net.ckt_sml.B,
+                net.ckt_sml.C,
+                net.ckt_sml.D
+            )
+
+            A = net.ckt_sml.A
+            B = net.ckt_sml.B[:, [0]]   # keep column shape (n,1)
+            C = net.ckt_sml.C[[0], :]   # keep row shape (1,n)
+            D = net.ckt_sml.D[[0], [0]] # shape (1,1)
+
+            print (A)
+            print (B)
+            print (C)
+            print (D)
+
+            A_eff = A[0:1, 0:1]  # 1x1
+            B_eff = B[0:1, 0:1]  # 1x1
+            C_eff = C[0:1, 0:1]  # 1x1
+            D_eff = D[0]
+
+            # Assume A, B, C, D are your matrices (n x n, n x 1, 1 x n, 1 x 1)
+            omega_num = np.logspace(0, 8, 500)  # example: 1 Hz to 100 MHz
+            H = np.zeros_like(omega, dtype=complex)
+
+            for k, w in enumerate(omega_num):
+                # Solve (A + j*w*I) V = -B
+                # Use pseudo-inverse to avoid singularity issues
+                A_freq = A + 1j*w*np.eye(A.shape[0])
+                Vaux = - np.linalg.pinv(A_freq) @ B
+                # Output response
+                H[k] = C @ Vaux + D
+
+            # Magnitude and phase
+            mag_num = np.abs(H)
+            phase_num = np.angle(H, deg=True)
+
+            # Optional: convert magnitude to dB
+            mag_dB_num = 20*np.log10(mag_num)
+
+            # Example: print DC and high-frequency gain
+            print("DC gain (linear):", mag_num[0])
+            print("DC gain (dB):", mag_dB_num[0])
+            print("HF gain (linear):", mag_num[-1])
+            print("HF gain (dB):", mag_dB_num[-1])
+
+            sys_scypi = StateSpace(A, B, C, D)
+
+            w, H = freqresp(sys_scypi, omega)
+
+            mag_scypi = np.abs(H)
+            phase_scypi = np.angle(H, deg=True)
+
+
+            # Force SISO: output 0, input 0
+            sys_siso = sys[0, 0]
+
+            # Poles and zeros
+            poles = ct.pole(sys_siso)
+            zeros = ct.zero(sys_siso)
+
+            # Frequency response
+            mag, phase, omega_out = ct.freqresp(sys_siso, omega=omega)
+
+            # -----------------------------
+            # Plotting
+            # -----------------------------
+            plot_bode_plotly(
+               mag,
+               phase,
+               omega_out,
+               single_out=True,
+               output_idx=(0, 0),
+              filename=f"bode_{label}.html"
+            )
+
+            plot_bode_plotly(
+               mag_num,
+               phase_num,
+               omega_num,
+               single_out=True,
+               output_idx=(0, 0),
+              filename=f"bode_{label}_num.html"
+            )
+
+            plot_pz_plotly(
+                sys_siso,
+                poles=poles,
+                zeros=zeros,
+                filename=f"pz_{label}.html"
+            )
+
+            plot_bode_plotly(
+                mag_scypi,
+                phase_scypi,
+                w,
+                single_out=True,
+                output_idx=(0, 0),
+                filename=f"bode_{label}_scipy.html"
+            )
 
     exit(1)
 

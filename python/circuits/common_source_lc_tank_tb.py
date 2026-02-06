@@ -246,6 +246,10 @@ def plot_load_line(ids, vds_sweep, vin_op_sweep, degen_op, tri_op, Rd, Rs, block
         plt.savefig("../../doc/common_source_amp_loadline.svg", bbox_inches = 'tight')
     #plt.show(block=block)
 
+import numpy as np
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import math
 
 def main():
 

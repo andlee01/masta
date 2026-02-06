@@ -34,6 +34,7 @@ class Circuit:
         #  - When true disables insertion of depedency variables for dependent sources
         self.lti = lti
         self.num_outputs_lti = 0
+        self.sym_vals = {}
 
     # Add an edge to the Graph.
     # Note that explicit pos_node and neg_node attributes are stored as part of the edge dict
@@ -631,14 +632,54 @@ class Circuit:
     def get_ss(self):
 
         A_ss, B_ss, C_ss = self.get_ss_A()
-        var_string, var_list, sys_var_list, inp_var_list = self.get_ss_sym_matrices()
+        var_list, sys_var_list, inp_var_list = self.get_ss_sym_matrices()
 
-        x    = Matrix(sys_var_list)
-        u    = Matrix(inp_var_list)
+        subs_map = {}
 
-        A    = Matrix(A_ss)
-        B    = Matrix(B_ss)
-        C    = Matrix(C_ss)
+        for elem in range(self.num_edges):
+            sym = self.elem_symbol(elem)
+            val = self.get_edge_info(elem).get_value()  # numeric value
+            subs_map[sym] = val
+
+        # Promote to SymPy Matrices explicitly (safe)
+        A = Matrix(A_ss)
+        B = Matrix(B_ss)
+        C = Matrix(C_ss)
+
+        x = Matrix(sys_var_list)
+        u = Matrix(inp_var_list)
+
+        # -------------------------------
+        # Solve symbolically
+        # -------------------------------
+
+        # A.Vaux + B.x + C.u = 0
+        # => A.Vaux = -(B*x + C*u)
+
+        rhs = -(B*x + C*u)
+
+        # Symbolic LU solve (Gaussian elimination, no inverse)
+        Vaux_sym = A.LUsolve(rhs)
+
+        # -------------------------------
+        # Now substitute numeric values
+        # -------------------------------
+
+        subs_map = {}
+
+        for elem in range(self.num_edges):
+            sym = self.elem_symbol(elem)
+            val = self.get_edge_info(elem).get_value()
+            subs_map[sym] = val
+
+        # If x or u contain parameters that must be substituted:
+        Vaux = Vaux_sym.subs(subs_map)
+
+        print (Vaux[15])
+
+        # (Optional) force numeric evaluation
+        Vaux = Vaux.evalf()
+
 
         # Vaux = vector of circuit variables
         #        For capacitors, the variable is ddt(V_C<n>)
@@ -647,7 +688,17 @@ class Circuit:
         # A.Vaux + B.x + C.u = 0
         # Vaux = -inv(A).B.x - inv(A).C.u
 
-        Vaux = -A.inv().multiply(B).multiply(x) - A.inv().multiply(C).multiply(u)
+        # Vaux = -A.inv().multiply(B).multiply(x) - A.inv().multiply(C).multiply(u)
+
+        # NOTE:
+        # We solve A * Vaux = -(B*x + C*u) using LU factorization instead of forming A^{-1}.
+        # Calling A.inv() explicitly is numerically and symbolically ill-conditioned:
+        #   - it amplifies conditioning issues (large gm vs tiny gds terms),
+        #   - destroys sparsity,
+        #   - and causes symbolic expression blow-up.
+        # LUsolve performs Gaussian elimination (with pivoting) and uses forward/back
+        # substitution to compute Vaux directly, which is the stable and correct way
+        # to solve MNA-style circuit equations (as done in SPICE).
 
         # Default state space system matrices
         self.A = np.zeros((self.num_sys_vars, self.num_sys_vars))
@@ -729,7 +780,7 @@ class Circuit:
                     for elem_chk in range(self.num_edges):
                         if bf_row[elem_chk] and elem_chk != elem:
                             assert self.is_sys_var_cap(elem_chk), \
-                                "Only capacitors allowed in  loops with co-tree capacitors " + str(elem_chk)
+                                "Only capacitors allowed in loops with co-tree capacitors " + str(elem_chk)
 
                     # Mask out references to self
                     bf_row[elem] = 0
@@ -766,6 +817,37 @@ class Circuit:
                 else:
                     self.D[sys_var_ref][int(index[0])] = coeffs[i]
 
+    def elem_symbol(self, elem):
+        """
+        Return a unique SymPy symbol for a circuit element.
+        Symbols are cached so repeated calls return the same object.
+        """
+
+        info = self.get_edge_info(elem)
+        elem_type = info.get_type()
+
+        if elem_type == ElementType.inductor:
+            prefix = "L"
+        elif elem_type == ElementType.resistor:
+            prefix = "R"
+        elif elem_type == ElementType.capacitor:
+            prefix = "C"
+        elif elem_type == ElementType.voltage_src:
+            prefix = "V"
+        elif elem_type == ElementType.current_src:
+            prefix = "I"
+        else:
+            raise ValueError(f"Unsupported element type: {elem_type}")
+
+        # Use edge index to guarantee uniqueness
+        name = f"{prefix}{elem}"
+
+        if name not in self.sym_vals:
+            self.sym_vals[name] = symbols(name, real=True, finite=True)
+
+        return self.sym_vals[name]
+
+
     def get_ss_A(self):
 
         qf_A_ss = self.qf.copy()
@@ -775,14 +857,14 @@ class Circuit:
         # Element values can have large ranges. For example, resistors could be 10M and capacitor values
         # could be 20f. Values with such large differences in magnitude represent a problem for double precision
         # values. That is, they may lack the required precision to adequately represent the numbers, especially when added.
-        qf_A_ss = qf_A_ss.astype(np.longdouble)
-        bf_A_ss = bf_A_ss.astype(np.longdouble)
-        B_ss    = np.zeros([self.num_edges, self.num_sys_vars], dtype=np.longdouble)
+        qf_A_ss = Matrix(qf_A_ss)   # integer topology only
+        bf_A_ss = Matrix(bf_A_ss)
+        B_ss    = zeros(self.num_edges, self.num_sys_vars)
 
-        non_sys = np.zeros([self.num_edges, self.num_edges], dtype=np.longdouble)
+        non_sys = zeros(self.num_edges, self.num_edges)
 
         # REVISIT (needs to be num_inputs)
-        C_ss    = np.zeros([self.num_edges, 1], dtype=np.longdouble)
+        C_ss    = zeros(self.num_edges, 1)
 
         for elem in range(self.num_edges):
 
@@ -861,7 +943,8 @@ class Circuit:
                 #  - This implies that the variable inside Vaux is ddt(i_L<n>)
                 #  - Therefore, the bf column related to this inductor should be multiplied
                 #    by the inductor value
-                bf_A_ss[:,elem] = bf_A_ss[:,elem] * self.get_edge_info(elem).get_value()
+                sym = self.elem_symbol(elem)
+                bf_A_ss[:,elem] *= sym
 
             elif self.is_non_sys_var_ind(elem):
                 assert False, "Non sys var inductors not supported"
@@ -884,7 +967,8 @@ class Circuit:
                 #  - This implies that the variable inside Vaux is ddt(V_C<n>)
                 #  - Therefore, the qf column related to this capacitor should be multiplied
                 #    by the capacitor value
-                qf_A_ss[:,elem] = qf_A_ss[:,elem] * self.get_edge_info(elem).get_value()
+                sym = self.elem_symbol(elem)
+                qf_A_ss[:,elem] *= sym
 
             elif self.is_non_sys_var_cap(elem):
 
@@ -930,7 +1014,8 @@ class Circuit:
 
                 # Form the base bf row to add to qf_A_ss
                 bf_row[elem] = 0
-                bf_row = -1 * (bf_row * self.get_edge_info(elem).get_value())
+                sym = self.elem_symbol(elem)
+                bf_row = -1 * (bf_row * sym)
 
                 # Multiply the base_bf_row by the qf column corresponding to the element to form the addition
                 # matrix
@@ -955,10 +1040,10 @@ class Circuit:
                 bf_column = bf_A_ss[:,elem]
 
                 # Get the resistance
-                res_val = self.get_edge_info(elem).get_value()
+                sym = self.elem_symbol(elem)
 
                 # Multiply by resistance
-                bf_column = bf_column * res_val
+                bf_column *= sym
 
                 # write back to column
                 bf_A_ss[:,elem] = bf_column
@@ -1016,15 +1101,16 @@ class Circuit:
 
                     # Get the Qf matrix column
                     qf_column = self.qf[:,elem].copy()
+                    qf_col = Matrix(qf_column).reshape(qf_column.shape[0], 1)
 
                     # Determine the column of B to update (i.e. sys var index)
                     sys_var_ref = self.get_edge_info(elem).get_sys_var_ref()
 
                     # Update B column
-                    B_ss[:,sys_var_ref] = qf_column
+                    B_ss[:,sys_var_ref] = qf_col
 
                     # Mask A column
-                    qf_A_ss[:,elem] = qf_A_ss[:,elem] - qf_column
+                    qf_A_ss[:,elem] -= qf_col
 
                 else:
 
@@ -1073,15 +1159,17 @@ class Circuit:
                     # Get the Qf matrix column
                     #  - Must use the original qf column here in case another dependent source has added its gm
                     qf_column = self.qf[:,elem].copy()
+                    qf_col = Matrix(qf_column).reshape(qf_column.shape[0], 1)
 
                     # Get the Qf matrix column corresponding to the control voltage element
                     #  - This column may not be clear if other qf equations require the current through this element
                     #  - Therefore, the dependent current source contribution must be added to the column values
                     #    already there
-                    qf_A_ss[:,dep_ref] = qf_A_ss[:,dep_ref] + (qf_column * self.get_edge_info(elem).get_value())
+                    sym = self.elem_symbol(elem)
+                    qf_A_ss[:,dep_ref] += qf_col * sym
 
                     # The original references to the current source in the qf matrix must be masked out
-                    qf_A_ss[:,elem] = qf_A_ss[:,elem] - qf_column
+                    qf_A_ss[:,elem] -= qf_col
             else:
                 assert False, "Unmapped element"
 
@@ -1102,33 +1190,21 @@ class Circuit:
         return A_ss, B_ss, C_ss
 
     def get_ss_sym_matrices(self):
+        # Edge variables (v0, v1, ...)
+        v_syms = symbols(f"v0:{self.num_edges}", real=True)
 
-        # Create sympy variable string
-        var_string = ""
+        # State variables (x0, x1, ...)
+        x_syms = symbols(f"x0:{self.num_sys_vars}", real=True)
 
-        # Lists to form sympy Matrix
-        var_list = []
-        sys_var_list = []
-        inp_var_list = []
+        # Input variables (u0, u1, ...)
+        u_syms = symbols("u0", real=True)
 
-        # 1 variable for each edge
-        for elem in range(self.num_edges):
-            var_string += "v" + str(elem) + " "
-            var_list.append("v" + str(elem))
+        # Return as SymPy Matrices
+        var_list     = Matrix(v_syms)
+        sys_var_list = Matrix(x_syms)
+        inp_var_list = Matrix([u_syms])
 
-        # 1 variable for each sys var
-        for elem in range(self.num_sys_vars):
-            var_string += "x" + str(elem) + " "
-            sys_var_list.append("x" + str(elem))
-
-        # 1 variable for each input
-        var_string += "u" + str(0) + " "
-        inp_var_list.append("u" + str(0))
-
-        # Add remaining symbolic matrices
-        var_string += "A B C Vaux x u"
-
-        return var_string, var_list, sys_var_list, inp_var_list
+        return var_list, sys_var_list, inp_var_list
 
     def get_lti_const_x0(self, x0):
 
@@ -1139,7 +1215,8 @@ class Circuit:
 
                 sys_var_ref = self.get_edge_info(elem).get_sys_var_ref()
 
-                x0[sys_var_ref] = self.get_edge_info(elem).get_value()
+                sym = self.elem_symbol(elem)
+                x0[sys_var_ref] = sym
 
         return x0
 
