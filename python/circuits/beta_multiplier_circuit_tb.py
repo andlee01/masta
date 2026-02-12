@@ -29,7 +29,7 @@ RREF_SWEEP_RANGE = (2.5e3, 6.5e3, int(10))
 TEND = 50e-12
 TSTEP = 10000
 TOL = 1e-6
-M2_SWEEP_RANGE = (0, 1e-3, 100)
+M2_SWEEP_RANGE = (0, 1, 100)
 
 # ------------------------------------------------------------------------------
 # Core circuit equations
@@ -214,6 +214,7 @@ def sml_sweep_m2(nw, vs_sml_sweep, Rref):
         nw.set_source(source="gate_m2", val=vs)
         params = {"Rref": Rref, "Vs": 0}
         nw.set_beta_multiplier_sml_params(**params)
+        nw.set_source("gate_m2", vs)
 
         root_start = np.ones(nw.ckt_sml.num_edges)
         x = op_solve(nw.ckt_sml, root_start)
@@ -537,7 +538,7 @@ def main():
     nw_no_ro_m2_stray = beta_multiplier_ntwrk(output_resistance=True,  res_m2=True, stray_capacitance=True)
     nw_m1             = beta_multiplier_ntwrk(output_resistance=True,  res_m2=False)
     nw_no_ro_m1       = beta_multiplier_ntwrk(output_resistance=False, res_m2=False)
-   
+
     # Solve OPs and build small-signal circuits
     # for net, label in [(nw_m2, "ro_m2"), (nw_no_ro_m2, "no_ro_m2"), (nw_m1, "ro_m1"), (nw_no_ro_m1, "no_ro_m1")]:
 
@@ -560,6 +561,18 @@ def main():
 
     #         # Build small-signal circuit with loop break
     #         net.add_sml_ckt(op=op, gate_topology=net.gate_break_m1_m2())
+
+    #         # Extract operating-point small-signal parameters
+    #         gm_m1, ro_m1 = net.beta_mult.nmos_m1.get_op_sml(op)
+    #         gm_m2, ro_m2 = net.beta_mult.nmos_m2.get_op_sml(op)
+    #         gm_m3, ro_m3 = net.beta_mult.pmos_m3.get_op_sml(op)
+    #         gm_m4, ro_m4 = net.beta_mult.pmos_m4.get_op_sml(op)
+
+    #         #print(f"\n[{cfg['label']}]")
+    #         print(f"m1 gm = {gm_m1:.6f}, ro = {ro_m1:.6f}")
+    #         print(f"m2 gm = {gm_m2:.6f}, ro = {ro_m2:.6f}")
+    #         print(f"m3 gm = {gm_m3:.6f}, ro = {ro_m3:.6f}")
+    #         print(f"m4 gm = {gm_m4:.6f}, ro = {ro_m4:.6f}")
 
     #         # Run small-signal sweep
     #         results = sml_sweep_m2(net, m2_sweep, Rref)
@@ -618,18 +631,6 @@ def main():
                 output_topology=net._output_vds_m2_topology()
             )
 
-            # Extract operating-point small-signal parameters
-            gm_m1, ro_m1 = net.beta_mult.nmos_m1.get_op_sml(op)
-            gm_m2, ro_m2 = net.beta_mult.nmos_m2.get_op_sml(op)
-            gm_m3, ro_m3 = net.beta_mult.pmos_m3.get_op_sml(op)
-            gm_m4, ro_m4 = net.beta_mult.pmos_m4.get_op_sml(op)
-
-            print(f"\n[{cfg['label']}]")
-            print(f"m1 gm = {gm_m1:.6f}, ro = {ro_m1:.6f}")
-            print(f"m2 gm = {gm_m2:.6f}, ro = {ro_m2:.6f}")
-            print(f"m3 gm = {gm_m3:.6f}, ro = {ro_m3:.6f}")
-            print(f"m4 gm = {gm_m4:.6f}, ro = {ro_m4:.6f}")
-
             # -----------------------------
             # State-space construction
             # -----------------------------
@@ -646,51 +647,42 @@ def main():
             C = net.ckt_sml.C[[0], :]   # keep row shape (1,n)
             D = net.ckt_sml.D[[0], [0]] # shape (1,1)
 
-            print (A)
-            print (B)
-            print (C)
-            print (D)
+            # # Assume A, B, C, D are your matrices (n x n, n x 1, 1 x n, 1 x 1)
+            # omega_num = np.logspace(0, 8, 500)  # example: 1 Hz to 100 MHz
+            # H = np.zeros_like(omega, dtype=complex)
 
-            A_eff = A[0:1, 0:1]  # 1x1
-            B_eff = B[0:1, 0:1]  # 1x1
-            C_eff = C[0:1, 0:1]  # 1x1
-            D_eff = D[0]
+            # for k, w in enumerate(omega_num):
+            #     # Solve (A + j*w*I) V = -B
+            #     # Use pseudo-inverse to avoid singularity issues
+            #     A_freq = A + 1j*w*np.eye(A.shape[0])
+            #     Vaux = - np.linalg.pinv(A_freq) @ B
+            #     # Output response
+            #     H[k] = C @ Vaux + D
 
-            # Assume A, B, C, D are your matrices (n x n, n x 1, 1 x n, 1 x 1)
-            omega_num = np.logspace(0, 8, 500)  # example: 1 Hz to 100 MHz
-            H = np.zeros_like(omega, dtype=complex)
+            # # Magnitude and phase
+            # mag_num = np.abs(H)
+            # phase_num = np.angle(H, deg=True)
 
-            for k, w in enumerate(omega_num):
-                # Solve (A + j*w*I) V = -B
-                # Use pseudo-inverse to avoid singularity issues
-                A_freq = A + 1j*w*np.eye(A.shape[0])
-                Vaux = - np.linalg.pinv(A_freq) @ B
-                # Output response
-                H[k] = C @ Vaux + D
+            # # Optional: convert magnitude to dB
+            # mag_dB_num = 20*np.log10(mag_num)
 
-            # Magnitude and phase
-            mag_num = np.abs(H)
-            phase_num = np.angle(H, deg=True)
+            # # Example: print DC and high-frequency gain
+            # print("DC gain (linear):", mag_num[0])
+            # print("DC gain (dB):", mag_dB_num[0])
+            # print("HF gain (linear):", mag_num[-1])
+            # print("HF gain (dB):", mag_dB_num[-1])
 
-            # Optional: convert magnitude to dB
-            mag_dB_num = 20*np.log10(mag_num)
-
-            # Example: print DC and high-frequency gain
-            print("DC gain (linear):", mag_num[0])
-            print("DC gain (dB):", mag_dB_num[0])
-            print("HF gain (linear):", mag_num[-1])
-            print("HF gain (dB):", mag_dB_num[-1])
-
-            sys_scypi = StateSpace(A, B, C, D)
+            sys_scypi = StateSpace(net.ckt_sml.A, net.ckt_sml.B, net.ckt_sml.C, net.ckt_sml.D)
 
             w, H = freqresp(sys_scypi, omega)
 
             mag_scypi = np.abs(H)
             phase_scypi = np.angle(H, deg=True)
 
+            input_idx = net.get_source_idx("gate_m2")
 
             # Force SISO: output 0, input 0
-            sys_siso = sys[0, 0]
+            sys_siso = sys[0, input_idx]
 
             # Poles and zeros
             poles = ct.pole(sys_siso)
@@ -711,14 +703,14 @@ def main():
               filename=f"bode_{label}.html"
             )
 
-            plot_bode_plotly(
-               mag_num,
-               phase_num,
-               omega_num,
-               single_out=True,
-               output_idx=(0, 0),
-              filename=f"bode_{label}_num.html"
-            )
+            # plot_bode_plotly(
+            #    mag_num,
+            #    phase_num,
+            #    omega_num,
+            #    single_out=True,
+            #    output_idx=(0, 0),
+            #   filename=f"bode_{label}_num.html"
+            # )
 
             plot_pz_plotly(
                 sys_siso,

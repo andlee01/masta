@@ -157,6 +157,12 @@ class beta_multiplier(subckt):
             raise KeyError(f"Unknown source: {name}")
         self.test_sources[name].set_value(value)
 
+    def get_source_idx(self, name):
+        if name not in self.test_sources:
+            raise KeyError(f"Unknown source: {name}")
+
+        return self.test_sources[name].get_input_ref()      
+
     def _default_gate_topology(self, ckt_sml):
         return self.vbiasn, self.vbiasn
 
@@ -192,6 +198,7 @@ class beta_multiplier(subckt):
         # Add Rn
         self.Rref_sml_idx = ckt_sml.num_edges
         self.Rref_sml = resistor()
+        self.Rref_sml.set_value(6.5e3)
         self.Rref_sml.set_instance("R_{{ref}_{" + self.instance + "}}")
         ckt_sml.add_edge(degen_node, self.GND, self.Rref_sml)
 
@@ -227,13 +234,18 @@ class beta_multiplier(subckt):
 
         n1     = ckt_sml.get_internal_node()
 
+        vbiasn = nodes["vbiasn"]
+        vbiasp = nodes["vbiasp"]
+        VCC    = nodes["vcc"]
+        GND    = nodes["gnd"]
+
         # pmos current mirror
         # -------------------
 
-        nodes = {"g": self.vbiasp, "d": self.vbiasn, "s": self.VCC}
+        nodes = {"g": vbiasp, "d": vbiasn, "s": VCC}
         self.isd_ref_sml_m3, self.vsg_ref_sml_m3 = self.pmos_m3.add_small(op=op, ckt_sml=ckt_sml, output_resistance=self.output_resistance, **nodes)
 
-        nodes = {"g": self.vbiasp, "d": self.vbiasp, "s": self.VCC}
+        nodes = {"g": vbiasp, "d": vbiasp, "s": VCC}
         self.isd_ref_sml_m4, self.vsg_ref_sml_m4 = self.pmos_m4.add_small(op=op, ckt_sml=ckt_sml, output_resistance=self.output_resistance, **nodes)
 
         # nmos current mirror
@@ -244,8 +256,8 @@ class beta_multiplier(subckt):
 
         gate_m1, gate_m2 = gate_topology(ckt_sml)
 
-        nodes = {"g": gate_m1, "d": self.vbiasn,
-                 "s": self.GND if self.res_m2 else n1}
+        nodes = {"g": gate_m1, "d": vbiasn,
+                 "s": GND if self.res_m2 else n1}
 
         self.ids_ref_sml_m1, self.vgs_ref_sml_m1 = self.nmos_m1.add_small(
             op=op, ckt_sml=ckt_sml,
@@ -253,8 +265,8 @@ class beta_multiplier(subckt):
             **nodes
         )
 
-        nodes = {"g": gate_m2, "d": self.vbiasp,
-                 "s": n1 if self.res_m2 else self.GND}
+        nodes = {"g": gate_m2, "d": vbiasp,
+                 "s": n1 if self.res_m2 else GND}
 
         self.ids_ref_sml_m2, self.vgs_ref_sml_m2 = self.nmos_m2.add_small(
             op=op, ckt_sml=ckt_sml,
@@ -270,4 +282,4 @@ class beta_multiplier(subckt):
         if output_topology is None:
             output_topology = self._default_output_topology
 
-        output_topology(self.vbiasp, self.GND, ckt_sml)
+        output_topology(self.vbiasn, self.GND, ckt_sml)

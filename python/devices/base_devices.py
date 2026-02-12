@@ -100,8 +100,9 @@ class TwoPortElement(ABC):
         #    2. Dependent current/voltage sources
         #    3. Constant valued current/voltage sources
         #
-        #  - Only category 1. above is classed as an LTI system input
+        #  - Only category 1 & 3. above are classed as an LTI system input
         self.is_input = False
+        self.input_ref = -1
 
         # Category 3
         self.is_const = False
@@ -170,6 +171,12 @@ class TwoPortElement(ABC):
 
     def get_output_ref(self):
         return self.output_ref
+
+    def set_input_ref(self, ref):
+        self.input_ref = ref
+
+    def get_input_ref(self):
+        return self.input_ref
 
     def set_is_const(self):
         self.is_const = True
@@ -785,7 +792,7 @@ class vccs_l1_mosfet_small(TwoPortElement):
         self.vgs = scb.v[self.vgs_ref]
 
         scb.i[self.i_d_ref] = self.gm * self.vgs
-
+        
     def get_weight(self):
         return 3
 

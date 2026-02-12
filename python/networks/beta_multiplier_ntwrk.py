@@ -105,7 +105,10 @@ class beta_multiplier_ntwrk():
 
     def set_beta_multiplier_sml_params(self, **params):
         self.beta_mult.set_sml_params(**params)
-        self.v_vs_sml.set_value(params["Vs"])
+        #self.v_vs_sml.set_value(params["Vs"])
 
     def set_source(self, source, val):
         self.beta_mult.set_source(name=source, value=val)
+
+    def get_source_idx(self, source):
+        return self.beta_mult.get_source_idx(name=source)

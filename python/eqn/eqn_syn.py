@@ -429,14 +429,14 @@ class Circuit:
         self.num_sys_vars = self.num_sys_var_cap + self.num_sys_var_ind
 
 
-    def set_const_sys_var_ref(self):
+    # def set_const_sys_var_ref(self):
 
-        for (u,v,d) in self.G.edges(data=True):
-            elem = d['info']
+    #     for (u,v,d) in self.G.edges(data=True):
+    #         elem = d['info']
 
-            if elem.get_is_const():
-                elem.set_sys_var(self.num_sys_vars)
-                self.num_sys_vars += 1
+    #         if elem.get_is_const():
+    #             elem.set_sys_var(self.num_sys_vars)
+    #            self.num_sys_vars += 1
 
     def set_lti_outputs(self):
 
@@ -675,11 +675,8 @@ class Circuit:
         # If x or u contain parameters that must be substituted:
         Vaux = Vaux_sym.subs(subs_map)
 
-        print (Vaux[15])
-
         # (Optional) force numeric evaluation
         Vaux = Vaux.evalf()
-
 
         # Vaux = vector of circuit variables
         #        For capacitors, the variable is ddt(V_C<n>)
@@ -702,14 +699,14 @@ class Circuit:
 
         # Default state space system matrices
         self.A = np.zeros((self.num_sys_vars, self.num_sys_vars))
-        self.B = np.zeros((self.num_sys_vars, 1))
+        self.B = np.zeros((self.num_sys_vars, self.num_inputs_lti))
 
         if self.num_outputs_lti != 0:
             self.C = np.zeros((self.num_outputs_lti, self.num_sys_vars))
-            self.D = np.zeros((self.num_outputs_lti, 1))
+            self.D = np.zeros((self.num_outputs_lti, self.num_inputs_lti))
         else:
             self.C = np.eye(self.num_sys_vars)
-            self.D = np.zeros((self.num_sys_vars, 1))
+            self.D = np.zeros((self.num_sys_vars, self.num_inputs_lti))
 
         # Loop through resulting equations (Vaux = ...)
         #  - Select the equations that correspond to a system variable (cap or ind)
@@ -761,35 +758,19 @@ class Circuit:
 
             if self.is_output_lti(elem):
 
-                if self.is_sys_var_cap(elem):
-                    output_ref  = self.get_edge_info(elem).get_output_ref()
-                    sys_var_ref = self.get_edge_info(elem).get_sys_var_ref()
-                    self.C[output_ref][sys_var_ref] = 1
+                str_expr = str(Vaux[elem])
+                str_expr = regex.sub(r"\s+", "", str_expr)
 
-                elif self.is_current_source(elem):
-                    print (elem)
-                    print ("*********************")
-                    assert self.get_edge_info(elem).get_is_const(), "Output current source must be constant"
-                    assert self.is_co_tree_elem(elem), "Output current source must be in co-tree"
+                output_ref  = self.get_edge_info(elem).get_output_ref()
 
-                    # Get the Bf matrix row
-                    bf_row = self.bf[elem ,:].copy()
+                # Parse the symbolic equation string into 2 lists
+                # coeffs = [1000.0 1000.001 1000.0 -1000.001 1.0]
+                # vect   = [u0 x0 x1 x2 x3]
+                coeffs = self.extract_numeric_values(str_expr)
+                vect   = self.separate_numeric_non_numeric(str_expr)
 
-                    # Currently only sys var capacitors are supported in current source
-                    # output loops
-                    for elem_chk in range(self.num_edges):
-                        if bf_row[elem_chk] and elem_chk != elem:
-                            assert self.is_sys_var_cap(elem_chk), \
-                                "Only capacitors allowed in loops with co-tree capacitors " + str(elem_chk)
-
-                    # Mask out references to self
-                    bf_row[elem] = 0
-
-                    for elem_loop in range(self.num_edges):
-                        if bf_row[elem_loop] != 0:
-                            output_ref  = self.get_edge_info(elem).get_output_ref()
-                            sys_var_ref = self.get_edge_info(elem_loop).get_sys_var_ref()
-                            self.C[output_ref][sys_var_ref] = -1 * bf_row[elem_loop]
+                # Parse the above lists and update the state space A and B matrices
+                self.parse_sym_list(coeffs, vect, output_ref, state=False)
 
     def parse_sym_list(self, coeffs, vect, sys_var_ref, state):
 
@@ -864,7 +845,7 @@ class Circuit:
         non_sys = zeros(self.num_edges, self.num_edges)
 
         # REVISIT (needs to be num_inputs)
-        C_ss    = zeros(self.num_edges, 1)
+        C_ss    = zeros(self.num_edges, self.num_inputs_lti)
 
         for elem in range(self.num_edges):
 
@@ -952,7 +933,8 @@ class Circuit:
             elif self.is_sys_var_cap(elem):
 
                 # Get the Bf matrix column
-                bf_column = bf_A_ss[:,elem]
+                #bf_column = bf_A_ss[:,elem].copy()
+                bf_column = self.bf[:,elem].copy()
 
                 # Determine the column of B to update (i.e. sys var index)
                 sys_var_ref = self.get_edge_info(elem).get_sys_var_ref()
@@ -967,6 +949,7 @@ class Circuit:
                 #  - This implies that the variable inside Vaux is ddt(V_C<n>)
                 #  - Therefore, the qf column related to this capacitor should be multiplied
                 #    by the capacitor value
+
                 sym = self.elem_symbol(elem)
                 qf_A_ss[:,elem] *= sym
 
@@ -1034,86 +1017,96 @@ class Circuit:
                 bf_A_ss[elem ,:] = 0
                 qf_A_ss[:, elem] = 0
 
+                if elem == 10:
+                    sys.exit(1)
+
             elif self.is_co_tree_res(elem) or self.is_spanning_tree_res(elem):
 
                 # Get the Bf matrix column
-                bf_column = bf_A_ss[:,elem]
+                #bf_column = bf_A_ss[:,elem]
+                bf_column = self.bf[:,elem].copy()
+                bf_col = Matrix(bf_column).reshape(bf_column.shape[0], 1)
 
                 # Get the resistance
                 sym = self.elem_symbol(elem)
 
                 # Multiply by resistance
-                bf_column *= sym
+                bf_col *= sym
 
                 # write back to column
-                bf_A_ss[:,elem] = bf_column
+                bf_A_ss[:,elem] = bf_col
 
             elif self.is_voltage_source(elem):
 
-                if self.get_edge_info(elem).get_is_input():
+                if self.get_edge_info(elem).get_is_input() or \
+                    self.get_edge_info(elem).get_is_const():
 
                     # Get the Bf matrix column
-                    bf_column = bf_A_ss[:,elem]
+                    #bf_column = bf_A_ss[:,elem]
+                    bf_column = self.bf[:,elem].copy()
+                    bf_col = Matrix(bf_column).reshape(bf_column.shape[0], 1)
 
                     # Get the input index
-                    input_ref = 0
+                    input_ref = self.get_edge_info(elem).get_input_ref()
 
                     # Update C column
-                    C_ss[:,input_ref] = bf_column
+                    C_ss[:,input_ref] = bf_col
 
                     # Mask Bf column
                     bf_A_ss[:,elem] = np.zeros(self.num_edges)
 
-                elif self.get_edge_info(elem).get_is_const():
+                # elif self.get_edge_info(elem).get_is_const():
 
-                    # Get the Bf matrix column
-                    bf_column = bf_A_ss[:,elem]
+                #     # Get the Bf matrix column
+                #     bf_column = bf_A_ss[:,elem]
 
-                    # Determine the column of B to update (i.e. sys var index)
-                    sys_var_ref = self.get_edge_info(elem).get_sys_var_ref()
+                #     # Determine the column of B to update (i.e. sys var index)
+                #     sys_var_ref = self.get_edge_info(elem).get_sys_var_ref()
 
-                    # Update B column
-                    B_ss[:,sys_var_ref] = bf_column
+                #     # Update B column
+                #     B_ss[:,sys_var_ref] = bf_column
 
-                    # Mask A column
-                    bf_A_ss[:,elem] = np.zeros(self.num_edges)
+                #     # Mask A column
+                #     bf_A_ss[:,elem] = np.zeros(self.num_edges)
 
                 else:
                     assert False, "Dependent voltage sources not yet supported"
 
             elif self.is_current_source(elem):
 
-                if self.get_edge_info(elem).get_is_input():
+                if self.get_edge_info(elem).get_is_input() or \
+                    self.get_edge_info(elem).get_is_const():
 
                     # Get the Qf matrix column
-                    qf_column = qf_A_ss[:,elem]
-
-                    # Get the input index
-                    input_ref = 0
-
-                    # Update C column
-                    C_ss[:,input_ref] = qf_column
-
-                    # Mask Qf column
-                    qf_A_ss[:,elem] = np.zeros(self.num_edges)
-
-                elif self.get_edge_info(elem).get_is_const():
-
-                    # Get the Qf matrix column
+                    #qf_column = qf_A_ss[:,elem].copy()
                     qf_column = self.qf[:,elem].copy()
                     qf_col = Matrix(qf_column).reshape(qf_column.shape[0], 1)
 
-                    # Determine the column of B to update (i.e. sys var index)
-                    sys_var_ref = self.get_edge_info(elem).get_sys_var_ref()
+                    # Get the input index
+                    input_ref = self.get_edge_info(elem).get_input_ref()
 
-                    # Update B column
-                    B_ss[:,sys_var_ref] = qf_col
+                    # Update C column
+                    C_ss[:,input_ref] = qf_col
 
-                    # Mask A column
                     qf_A_ss[:,elem] -= qf_col
 
-                else:
+                # elif self.get_edge_info(elem).get_is_const():
 
+                #     # Get the Qf matrix column
+                #     qf_column = self.qf[:,elem].copy()
+                #     qf_col = Matrix(qf_column).reshape(qf_column.shape[0], 1)
+
+                #     # Determine the column of B to update (i.e. sys var index)
+                #     sys_var_ref = self.get_edge_info(elem).get_sys_var_ref()
+
+                #     # Update B column
+                #     B_ss[:,sys_var_ref] = qf_col
+
+                #     # Mask A column
+                #     qf_A_ss[:,elem] -= qf_col
+
+                else:
+                    #print ("here.....")
                     # Dependent current source (i1)
                     #
                     # i1 is a dependent current source with value gm * control_voltage
@@ -1170,10 +1163,11 @@ class Circuit:
 
                     # The original references to the current source in the qf matrix must be masked out
                     qf_A_ss[:,elem] -= qf_col
+
             else:
                 assert False, "Unmapped element"
 
-        # Combine the final qf and bf equations
+        # Combine the final qf and bf equations       
         A_ss = qf_A_ss + bf_A_ss + non_sys
 
         elem_offset = 0
@@ -1197,28 +1191,40 @@ class Circuit:
         x_syms = symbols(f"x0:{self.num_sys_vars}", real=True)
 
         # Input variables (u0, u1, ...)
-        u_syms = symbols("u0", real=True)
+        u_syms = symbols(f"u0:{self.num_inputs_lti}", real=True)
 
         # Return as SymPy Matrices
         var_list     = Matrix(v_syms)
         sys_var_list = Matrix(x_syms)
-        inp_var_list = Matrix([u_syms])
+        inp_var_list = Matrix(u_syms)
 
         return var_list, sys_var_list, inp_var_list
 
-    def get_lti_const_x0(self, x0):
+    def set_lti_inputs(self):
 
-        for elem in range(self.num_edges):
+        self.num_inputs_lti = 0
 
-            if (self.is_current_source(elem) and self.get_edge_info(elem).get_is_const()) or \
-               (self.is_voltage_source(elem) and self.get_edge_info(elem).get_is_const()):
+        for (u,v,d) in self.G.edges(data=True):
+            elem = d['info']
+            if elem.get_is_input() or elem.get_is_const():
+                elem.set_input_ref(self.num_inputs_lti)
 
-                sys_var_ref = self.get_edge_info(elem).get_sys_var_ref()
+                self.num_inputs_lti += 1
+        
 
-                sym = self.elem_symbol(elem)
-                x0[sys_var_ref] = sym
+    # def get_lti_const_x0(self, x0):
 
-        return x0
+    #     for elem in range(self.num_edges):
+
+    #         if (self.is_current_source(elem) and self.get_edge_info(elem).get_is_const()) or \
+    #            (self.is_voltage_source(elem) and self.get_edge_info(elem).get_is_const()):
+
+    #             sys_var_ref = self.get_edge_info(elem).get_sys_var_ref()
+
+    #             sym = self.elem_symbol(elem)
+    #             x0[sys_var_ref] = sym
+
+    #     return x0
 
     def init_circuit(self):
         self.consistency_check()
@@ -1241,7 +1247,8 @@ class Circuit:
                 d['info'].set_dependencies(self)
 
         if self.lti:
-            self.set_const_sys_var_ref()
+            #self.set_const_sys_var_ref()
+            self.set_lti_inputs()
             self.set_lti_outputs()
 
         self.scb = Scoreboard(num_edges=self.num_edges, num_sys_vars=self.num_sys_vars, degen_mtrx=self.degen_mtrx)
