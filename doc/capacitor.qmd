@@ -1,0 +1,116 @@
+---
+title: "Interactive Technical Document Example"
+author: "Your Name"
+date: today
+format:
+  html:
+    toc: true
+    code-fold: true
+    theme: flatly
+    html-math-method: mathjax
+    mathjax:
+      equation-numbering: all
+---
+
+# Introduction
+
+# Output Magnitude and Phase in RC circuit
+The Bode plot of the RC circuit is shown in @fig-rc-bode-plot. Both the magnitude and phase of the output voltage vary as a function of frequency due to the finite response time of the capacitor. Unlike an ideal instantaneous device, a capacitor requires time for charge to accumulate or dissipate in response to changes in the applied voltage. This time-dependent behavior results in both attenuation of the output signal and a phase shift relative to the input.
+
+::: {#fig-rc-bode-plot}
+<iframe src="capacitor/bode_rc_filter_m0.html" width="800" height="600" style="border:none;"></iframe>
+Bode plot of the RC low-pass filter showing magnitude and phase response as a function of frequency.
+:::
+
+An intuitive understanding of the frequency-dependent magnitude and phase shift can be developed by considering the charge stored in the capacitor during each cycle of the input signal. The voltage across a capacitor is proportional to the stored charge, as given by $$ V_C = \frac{Q}{C}.$$
+
+Thus, a larger accumulated charge corresponds to a higher capacitor voltage. At low frequencies, the input voltage varies slowly, allowing current to flow in the same direction for a sufficiently long period of time. This permits charge to accumulate on the capacitor plates, allowing the capacitor voltage to closely follow the input voltage. This behavior is illustrated in @fig-rc-transient-1kHz for a relatively low input frequency of 1 kHz.
+
+::: {#fig-rc-transient-1kHz}
+<iframe src="capacitor/transient_cycle_rc_filter_m1_1000.0.html" width="800" height="600" style="border:none;"></iframe>
+Transient response of the RC filter at 1 kHz showing that the capacitor voltage closely follows the input voltage.
+:::
+
+As the input frequency increases, the input voltage changes direction more rapidly. Consequently, the current reverses direction sooner, reducing the time available for charge to accumulate on the capacitor before it begins to discharge. Because the capacitor voltage depends on the accumulated charge, the reduced charge accumulation results in a lower peak voltage. Furthermore, since the capacitor voltage changes more slowly than the input voltage, it reaches its peak value later in time. This delay in the response of the capacitor manifests as a phase shift between the input and output voltages. This behavior is shown in @fig-rc-transient-1MHz for an input frequency of 1 MHz.
+
+::: {#fig-rc-transient-1MHz}
+<iframe src="capacitor/transient_cycle_rc_filter_m1_1000000.0.html" width="800" height="600" style="border:none;"></iframe>
+Transient response of the RC filter at 1 MHz showing reduced amplitude and increased phase lag.
+:::
+
+At even higher frequencies, such as 2 MHz, which exceeds the −3 dB cutoff frequency of the filter, the capacitor has insufficient time to accumulate significant charge before the current reverses direction. As a result, the output voltage amplitude is substantially attenuated, and the phase shift increases further. In this regime, the capacitor voltage responds slowly relative to the rapidly changing input, resulting in both significant attenuation and phase lag, as shown in @fig-rc-transient-2MHz.
+
+::: {#fig-rc-transient-2MHz}
+<iframe src="capacitor/transient_cycle_rc_filter_m1_2000000.0.html" width="800" height="600" style="border:none;"></iframe>
+Transient response of the RC filter at 2 MHz showing significant attenuation and phase shift due to limited charge accumulation time.
+:::
+
+## Mathematical Interpretation Using Sinusoidal Steady-State
+
+A more direct mathematical interpretation can be obtained by writing the governing equation in the form
+
+$$
+RC \frac{dV_C(t)}{dt} + V_C(t) = V_{in}(t).
+$$
+
+This equation states that the input voltage is equal to the sum of two terms: the capacitor voltage itself and a term proportional to its time derivative.
+
+Because the circuit is linear and time-invariant, a sinusoidal input produces a sinusoidal output at the same frequency in steady state. If the input is
+
+$$
+V_{in}(t) = V_0 \sin(\omega t),
+$$
+
+then the capacitor voltage must also take the form
+
+$$
+V_C(t) = A \sin(\omega t - \phi),
+$$
+
+where $A$ and $\phi$ are constants determined by the circuit parameters and the input frequency.
+
+The derivative of this expression is
+
+$$
+\frac{dV_C(t)}{dt}
+=
+\omega A \cos(\omega t - \phi),
+$$
+
+which is equivalent to a sinusoid at the same frequency, but shifted in phase by $90^\circ$.
+
+Substituting these expressions into the differential equation gives
+
+$$
+RC \, \omega A \cos(\omega t - \phi)
++
+A \sin(\omega t - \phi)
+=
+V_0 \sin(\omega t).
+$$
+
+The left-hand side is therefore the sum of two sinusoids of identical frequency. Although one term is expressed as a sine and the other as a cosine, they differ only by a phase shift. Any linear combination of sine and cosine functions at the same frequency can be rewritten as a single sinusoid at that frequency with some amplitude and phase shift. This follows from the trigonometric identity
+
+$$
+a \sin(\omega t) + b \cos(\omega t)
+=
+\sqrt{a^2 + b^2}
+\sin(\omega t + \theta),
+$$
+
+for an appropriate phase angle $\theta$.
+
+Thus, the sum of the capacitor voltage and its derivative term produces another sinusoid at the same frequency as the input. The coefficients determine the resulting amplitude and phase. 
+
+At low frequencies, the factor $\omega$ is small, and the derivative term contributes little to the sum. The equation is therefore dominated by the $V_C(t)$ term, and the output closely follows the input with minimal phase shift
+
+$$
+V_C(t) \approx V_{in}(t).
+$$
+
+As the frequency increases, the derivative term becomes larger because it is proportional to $\omega$. Since this term is inherently phase-shifted by $90^\circ$ relative to $V_C(t)$, the vector sum of the two terms requires the overall capacitor voltage to shift in phase in order to satisfy the equation. The greater the frequency, the more significant the derivative contribution, and the larger the resulting phase shift. In the high-frequency limit, the phase shift approaches $90^\circ$.
+
+In this way, both the attenuation and the phase shift of the RC circuit emerge directly from the requirement that the sum of the voltage term and the derivative term must equal the input sinusoid.
+
+
+

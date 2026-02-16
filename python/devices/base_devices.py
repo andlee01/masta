@@ -439,6 +439,9 @@ class sine_voltage_src(TwoPortElement):
     def get_ddt(self, scb):
         scb.dv[self.ref] = 0
 
+    def get_time_series_input(self, tr):
+        return self.bias + (self.mag * np.sin(self.omega * tr + self.phi))
+
 class pulse_voltage_src(TwoPortElement):
 
     def __init__(self, T=1e-6, t_on=0.5e-6, t_r=0, t_f=0, t_del=0, mag=0.6, bias=0):
@@ -792,7 +795,7 @@ class vccs_l1_mosfet_small(TwoPortElement):
         self.vgs = scb.v[self.vgs_ref]
 
         scb.i[self.i_d_ref] = self.gm * self.vgs
-        
+
     def get_weight(self):
         return 3
 
