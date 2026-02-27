@@ -29,7 +29,7 @@ class beta_multiplier_ntwrk():
 
         # Add Vs
         self.v_vs = voltage_src()
-        self.v_vs.set_instance("V_S")
+        self.v_vs.set_instance("V_{DD}")
         self.v_vs.set_value(5.0)
         self.ckt.add_edge(VCC, GND, self.v_vs)
 

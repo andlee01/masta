@@ -17,6 +17,8 @@ from beta_multiplier_ntwrk import *
 import control as ct
 from scipy.signal import freqresp, StateSpace
 
+from pathlib import Path
+
 # ------------------------------------------------------------------------------
 # Configuration
 # ------------------------------------------------------------------------------
@@ -116,9 +118,6 @@ def sweep(nw, vs_sweep):
         x = op_solve(nw.ckt, root_start)
         root_start = x.copy()
 
-        #rref_idx = nw.get_rref_idx()
-        #root_start[rref_idx] = 20e-3
-
         irref_sweep[vs_idx] = nw.get_Rref_current(x)
 
         # flatten each returned value to scalar
@@ -195,7 +194,7 @@ def sml_sweep(nw, vs_sml_sweep):
         "irref":  irref_sml_sweep
     }
 
-def sml_sweep_m2(nw, vs_sml_sweep, Rref):
+def sml_sweep_m2(nw, vs_sml_sweep):
     """Perform small-signal sweep of beta-multiplier network."""
     N = len(vs_sml_sweep)
 
@@ -212,7 +211,7 @@ def sml_sweep_m2(nw, vs_sml_sweep, Rref):
 
     for vs_idx, vs in enumerate(vs_sml_sweep):
         nw.set_source(source="gate_m2", val=vs)
-        params = {"Rref": Rref, "Vs": 0}
+        params = {"Rref": DEFAULT_RREF, "Vs": 0}
         nw.set_beta_multiplier_sml_params(**params)
         nw.set_source("gate_m2", vs)
 
@@ -244,28 +243,26 @@ def sml_sweep_m2(nw, vs_sml_sweep, Rref):
         "irref":  irref_sml_sweep
     }
 
+# ------------------------------------------------------------------------------
+# Plotting Functions
+# ------------------------------------------------------------------------------
 
-
-import os
-import plotly.graph_objects as go
-
-def plot_sweep(vs_sweep, results, suffix="ro", output_dir="../../doc"):
-    """Generate interactive Plotly plots with LaTeX-rendered titles and legends,
-    and hover labels formatted with subscripts using HTML."""
-    os.makedirs(output_dir, exist_ok=True)
+def plot_sweep(vs_sweep, results, output_dir, suffix="ro"):
+    """Generate interactive Plotly plots with LaTeX-rendered titles and legends."""
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
 
     def save_plot(x, ys, labels, filename, ylabel, title):
         fig = go.Figure()
 
         for y, label in zip(ys, labels):
-            # Convert LaTeX labels to simple HTML for hover (remove $$, replace _ with <sub>)
             hover_label = label.replace("$$", "").replace("{", "").replace("}", "")
-            hover_label = hover_label.replace("_", "<sub>")  # simple subscript
+            hover_label = hover_label.replace("_", "<sub>") 
             fig.add_trace(go.Scatter(
                 x=x,
                 y=y,
                 mode="lines",
-                name=label,  # legend still renders LaTeX
+                name=label, 
                 hovertemplate=f"{hover_label}: %{{y:.6g}}<extra></extra>"
             ))
 
@@ -279,12 +276,11 @@ def plot_sweep(vs_sweep, results, suffix="ro", output_dir="../../doc"):
             font=dict(size=14)
         )
 
-        # Save HTML with MathJax for titles/legend
-        file_path = os.path.join(output_dir, filename)
+        file_path = output_path / filename
         html_str = fig.to_html(
             include_plotlyjs="cdn",
             full_html=True,
-            include_mathjax="cdn",  # ensures LaTeX in titles and legend
+            include_mathjax="cdn",  
             config={"responsive": True}
         )
         with open(file_path, "w") as f:
@@ -322,19 +318,11 @@ def plot_sweep(vs_sweep, results, suffix="ro", output_dir="../../doc"):
         "Reference Current vs Sweep Voltage"
     )
 
-def plot_tr(tr, yr, filename="plot.html", title="Plot of yr vs tr", x_label="tr", y_label="yr"):
-    """
-    Plots yr vs tr using Plotly and saves the plot as an HTML file.
-
-    Parameters:
-    - tr: list or array-like, values for x-axis
-    - yr: list or array-like (can be 2D), values for y-axis
-    - filename: str, name of output HTML file
-    - title: str, plot title
-    - x_label: str, label for x-axis
-    - y_label: str, label for y-axis
-    """
-    # Convert to numpy array and flatten yr
+def plot_tr(tr, yr, output_dir, filename="plot.html", title="Plot of yr vs tr", x_label="tr", y_label="yr"):
+    """Plots yr vs tr using Plotly and saves the plot as an HTML file."""
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+    
     tr = np.array(tr).flatten()
     yr = np.array(yr).flatten()
     
@@ -348,51 +336,17 @@ def plot_tr(tr, yr, filename="plot.html", title="Plot of yr vs tr", x_label="tr"
         template="plotly_white"
     )
     
-    fig.write_html(filename)
-    print(f"Plot saved as {filename}")
+    file_path = output_path / filename
+    fig.write_html(str(file_path))
+    print(f"Plot saved as {file_path}")
 
-
-
-def quarto_math_block(equations):
-    """
-    Convert an array of equation strings into a Quarto-ready MathJax block.
-    """
-
-    lines = ["$$"]
-
-    for eq in equations:
-        lines.append(eq + r" \\")  # new line in MathJax
-
-    # Remove trailing \\ from last equation
-    if len(lines) > 1:
-        lines[-1] = lines[-1].rstrip(r" \\")
-
-    lines.append("$$")
-
-    return "\n".join(lines)
-
-def plot_bode_plotly(mag, phase, omega, *,
+def plot_bode_plotly(mag, phase, omega, output_dir, *,
                      single_out=True,
                      output_idx=(0, 0),
                      filename="bode_output.html"):
-    """
-    Plot magnitude and phase using Plotly and save to a standalone HTML file.
-
-    Parameters
-    ----------
-    mag : ndarray
-        Magnitude array from ct.freqresp
-    phase : ndarray
-        Phase array from ct.freqresp (radians)
-    omega : ndarray
-        Frequency vector (rad/s)
-    single_out : bool
-        True for SISO systems
-    output_idx : tuple
-        (output, input) index for MIMO systems
-    filename : str
-        Output HTML filename
-    """
+    """Plot magnitude and phase using Plotly and save to a standalone HTML file."""
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
 
     if single_out:
         mag_vec = mag
@@ -412,49 +366,13 @@ def plot_bode_plotly(mag, phase, omega, *,
         subplot_titles=("Magnitude (dB)", "Phase (deg)")
     )
 
-    # Magnitude plot
-    fig.add_trace(
-        go.Scatter(
-            x=omega,
-            y=mag_db,
-            mode="lines",
-            name="Magnitude"
-        ),
-        row=1, col=1
-    )
+    fig.add_trace(go.Scatter(x=omega, y=mag_db, mode="lines", name="Magnitude"), row=1, col=1)
+    fig.add_trace(go.Scatter(x=omega, y=phase_deg, mode="lines", name="Phase"), row=2, col=1)
 
-    # Phase plot
-    fig.add_trace(
-        go.Scatter(
-            x=omega,
-            y=phase_deg,
-            mode="lines",
-            name="Phase"
-        ),
-        row=2, col=1
-    )
-
-    fig.update_xaxes(
-        type="log",
-        title_text="Frequency (rad/s)",
-        row=1, col=1
-    )
-
-    fig.update_xaxes(
-        type="log",
-        title_text="Frequency (rad/s)",
-        row=2, col=1
-    )
-
-    fig.update_yaxes(
-        title_text="Magnitude (dB)",
-        row=1, col=1
-    )
-
-    fig.update_yaxes(
-        title_text="Phase (deg)",
-        row=2, col=1
-    )
+    fig.update_xaxes(type="log", title_text="Frequency (rad/s)", row=1, col=1)
+    fig.update_xaxes(type="log", title_text="Frequency (rad/s)", row=2, col=1)
+    fig.update_yaxes(title_text="Magnitude (dB)", row=1, col=1)
+    fig.update_yaxes(title_text="Phase (deg)", row=2, col=1)
 
     fig.update_layout(
         height=700,
@@ -463,44 +381,39 @@ def plot_bode_plotly(mag, phase, omega, *,
         title_text=f"Bode Plot ({filename})"
     )
 
-    fig.write_html(filename, include_plotlyjs="cdn")
+    file_path = output_path / filename
+    fig.write_html(str(file_path), include_plotlyjs="cdn")
+    print(f"Plot saved as {file_path}")
 
-def plot_pz_plotly(sys, poles, zeros, filename="pz_plot.html"):
+def plot_pz_plotly(sys, poles, zeros, output_dir, filename="pz_plot.html"):
+    """Plot Pole-Zero map and save to standalone HTML file."""
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
 
     fig = go.Figure()
 
-    # Poles
     fig.add_trace(go.Scatter(
-        x=np.real(poles),
-        y=np.imag(poles),
-        mode="markers",
-        marker=dict(symbol="x", size=10),
-        name="Poles"
+        x=np.real(poles), y=np.imag(poles),
+        mode="markers", marker=dict(symbol="x", size=10), name="Poles"
     ))
 
-    # Zeros
     fig.add_trace(go.Scatter(
-        x=np.real(zeros),
-        y=np.imag(zeros),
-        mode="markers",
-        marker=dict(symbol="circle", size=10),
-        name="Zeros"
+        x=np.real(zeros), y=np.imag(zeros),
+        mode="markers", marker=dict(symbol="circle", size=10), name="Zeros"
     ))
 
-    # Axes
     fig.add_shape(
         type="line",
-        x0=min(np.real(poles.min()), -1),
-        x1=max(np.real(poles.max()), 1),
-        y0=0, y1=0,
-        line=dict(dash="dash", color="gray")
+        x0=min(np.real(poles.min()), -1) if len(poles) else -1,
+        x1=max(np.real(poles.max()), 1) if len(poles) else 1,
+        y0=0, y1=0, line=dict(dash="dash", color="gray")
     )
 
     fig.add_shape(
         type="line",
         x0=0, x1=0,
-        y0=min(np.imag(poles.min()), -1),
-        y1=max(np.imag(poles.max()), 1),
+        y0=min(np.imag(poles.min()), -1) if len(poles) else -1,
+        y1=max(np.imag(poles.max()), 1) if len(poles) else 1,
         line=dict(dash="dash", color="gray")
     )
 
@@ -513,13 +426,53 @@ def plot_pz_plotly(sys, poles, zeros, filename="pz_plot.html"):
         showlegend=True
     )
 
-    fig.write_html(filename, include_plotlyjs="cdn")
+    file_path = output_path / filename
+    fig.write_html(str(file_path), include_plotlyjs="cdn")
+    print(f"Plot saved as {file_path}")
+
+
+def quarto_math_block(equations):
+    """
+    Convert an array of equation strings into a Quarto-ready MathJax aligned block.
+
+    Example output:
+
+    $$
+    \begin{aligned}
+    a &= b + c \\
+    d &= e + f
+    \end{aligned}
+    $$
+    """
+
+    if not equations:
+        return "$$\n\\begin{aligned}\n\\end{aligned}\n$$"
+
+    lines = ["$$", r"\begin{aligned}"]
+
+    # Add equations with proper line breaks except the last
+    for i, eq in enumerate(equations):
+        if i < len(equations) - 1:
+            lines.append(eq + r" \\")
+        else:
+            lines.append(eq)
+
+    lines.append(r"\end{aligned}")
+    lines.append("$$")
+
+    return "\n".join(lines)
+
+
 
 # ------------------------------------------------------------------------------
 # Main
 # ------------------------------------------------------------------------------
 
 def main():
+    # Define output directory once and ensure it exists
+    output_dir = Path("../../doc/beta_multiplier")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     vs_sweep = np.linspace(*SWEEP_RANGE)
     m2_sweep = np.linspace(*M2_SWEEP_RANGE)
     lrg_vs_sweep = np.linspace(*LRG_SWEEP_RANGE)
@@ -539,50 +492,48 @@ def main():
     nw_m1             = beta_multiplier_ntwrk(output_resistance=True,  res_m2=False)
     nw_no_ro_m1       = beta_multiplier_ntwrk(output_resistance=False, res_m2=False)
 
-    # Solve OPs and build small-signal circuits
-    # for net, label in [(nw_m2, "ro_m2"), (nw_no_ro_m2, "no_ro_m2"), (nw_m1, "ro_m1"), (nw_no_ro_m1, "no_ro_m1")]:
-
-    #     results = sweep(net, lrg_vs_sweep)
-    #     plot_sweep(lrg_vs_sweep, results, suffix=label)
+    eqs = nw_no_ro_m2.ckt.build_mathjax_equations()
+    math_block = quarto_math_block(eqs)
+    print(math_block)
 
     # Solve OPs and build small-signal circuits
-    # for net, base_label in [(nw_m2, "ro_m2_sml")]:
-    #     for Rref in Rref_sweep:
+    for net, label in [(nw_m2, "ro_m2"), (nw_no_ro_m2, "no_ro_m2"), (nw_m1, "ro_m1"), (nw_no_ro_m1, "no_ro_m1")]:
+        results = sweep(net, lrg_vs_sweep)
+        # Pass output_dir directly
+        plot_sweep(lrg_vs_sweep, results, output_dir, suffix=label)
 
-    #         # Update parameters (including Rref)
-    #         params_with_rref = dict(params)
-    #         params_with_rref["Rref"] = Rref
-    #         net.set_beta_multiplier_params(**params_with_rref)
+    # Solve OPs and build small-signal circuits
+    for net, base_label in [(nw_m2, "ro_m2_sml")]:
+            
+        # Update parameters (including Rref)
+        net.set_beta_multiplier_params(**params)
 
-    #         # Solve operating point
-    #         root_start = np.zeros(net.ckt.num_edges)
-    #         x = op_solve(net.ckt, root_start)
-    #         op = net.ckt.scb
+        # Solve operating point
+        root_start = np.zeros(net.ckt.num_edges)
+        x = op_solve(net.ckt, root_start)
+        op = net.ckt.scb
 
-    #         # Build small-signal circuit with loop break
-    #         net.add_sml_ckt(op=op, gate_topology=net.gate_break_m1_m2())
+        # Build small-signal circuit with loop break
+        net.add_sml_ckt(op=op, gate_topology=net.gate_break_m1_m2())
 
-    #         # Extract operating-point small-signal parameters
-    #         gm_m1, ro_m1 = net.beta_mult.nmos_m1.get_op_sml(op)
-    #         gm_m2, ro_m2 = net.beta_mult.nmos_m2.get_op_sml(op)
-    #         gm_m3, ro_m3 = net.beta_mult.pmos_m3.get_op_sml(op)
-    #         gm_m4, ro_m4 = net.beta_mult.pmos_m4.get_op_sml(op)
+        # Extract operating-point small-signal parameters
+        gm_m1, ro_m1 = net.beta_mult.nmos_m1.get_op_sml(op)
+        gm_m2, ro_m2 = net.beta_mult.nmos_m2.get_op_sml(op)
+        gm_m3, ro_m3 = net.beta_mult.pmos_m3.get_op_sml(op)
+        gm_m4, ro_m4 = net.beta_mult.pmos_m4.get_op_sml(op)
 
-    #         #print(f"\n[{cfg['label']}]")
-    #         print(f"m1 gm = {gm_m1:.6f}, ro = {ro_m1:.6f}")
-    #         print(f"m2 gm = {gm_m2:.6f}, ro = {ro_m2:.6f}")
-    #         print(f"m3 gm = {gm_m3:.6f}, ro = {ro_m3:.6f}")
-    #         print(f"m4 gm = {gm_m4:.6f}, ro = {ro_m4:.6f}")
+        print(f"m1 gm = {gm_m1:.6f}, ro = {ro_m1:.6f}")
+        print(f"m2 gm = {gm_m2:.6f}, ro = {ro_m2:.6f}")
+        print(f"m3 gm = {gm_m3:.6f}, ro = {ro_m3:.6f}")
+        print(f"m4 gm = {gm_m4:.6f}, ro = {ro_m4:.6f}")
 
-    #         # Run small-signal sweep
-    #         results = sml_sweep_m2(net, m2_sweep, Rref)
+        # Run small-signal sweep
+        results = sml_sweep_m2(net, m2_sweep)
 
-    #         # Generate a unique label per Rref
-    #         label = f"{base_label}_Rref={Rref:g}"
-
-    #         plot_sweep(m2_sweep, results, suffix=label)
-
-    #Rref_sweep = np.linspace(6.5e3)
+        label = f"{base_label}"
+        
+        # Pass output_dir directly
+        plot_sweep(m2_sweep, results, output_dir, suffix=label)
 
     # Solve OPs and build SS small-signal circuits
     for net, base_label in [(nw_m2_ss, "ro_m2_sml")]:
@@ -642,36 +593,6 @@ def main():
                 net.ckt_sml.D
             )
 
-            A = net.ckt_sml.A
-            B = net.ckt_sml.B[:, [0]]   # keep column shape (n,1)
-            C = net.ckt_sml.C[[0], :]   # keep row shape (1,n)
-            D = net.ckt_sml.D[[0], [0]] # shape (1,1)
-
-            # # Assume A, B, C, D are your matrices (n x n, n x 1, 1 x n, 1 x 1)
-            # omega_num = np.logspace(0, 8, 500)  # example: 1 Hz to 100 MHz
-            # H = np.zeros_like(omega, dtype=complex)
-
-            # for k, w in enumerate(omega_num):
-            #     # Solve (A + j*w*I) V = -B
-            #     # Use pseudo-inverse to avoid singularity issues
-            #     A_freq = A + 1j*w*np.eye(A.shape[0])
-            #     Vaux = - np.linalg.pinv(A_freq) @ B
-            #     # Output response
-            #     H[k] = C @ Vaux + D
-
-            # # Magnitude and phase
-            # mag_num = np.abs(H)
-            # phase_num = np.angle(H, deg=True)
-
-            # # Optional: convert magnitude to dB
-            # mag_dB_num = 20*np.log10(mag_num)
-
-            # # Example: print DC and high-frequency gain
-            # print("DC gain (linear):", mag_num[0])
-            # print("DC gain (dB):", mag_dB_num[0])
-            # print("HF gain (linear):", mag_num[-1])
-            # print("HF gain (dB):", mag_dB_num[-1])
-
             sys_scypi = StateSpace(net.ckt_sml.A, net.ckt_sml.B, net.ckt_sml.C, net.ckt_sml.D)
 
             w, H = freqresp(sys_scypi, omega)
@@ -694,106 +615,27 @@ def main():
             # -----------------------------
             # Plotting
             # -----------------------------
+            
+            # Pass output_dir directly
             plot_bode_plotly(
                mag,
                phase,
                omega_out,
+               output_dir,
                single_out=True,
                output_idx=(0, 0),
-              filename=f"bode_{label}.html"
+               filename=f"bode_{label}.html"
             )
-
-            # plot_bode_plotly(
-            #    mag_num,
-            #    phase_num,
-            #    omega_num,
-            #    single_out=True,
-            #    output_idx=(0, 0),
-            #   filename=f"bode_{label}_num.html"
-            # )
 
             plot_pz_plotly(
                 sys_siso,
                 poles=poles,
                 zeros=zeros,
+                output_dir=output_dir,
                 filename=f"pz_{label}.html"
             )
 
-            plot_bode_plotly(
-                mag_scypi,
-                phase_scypi,
-                w,
-                single_out=True,
-                output_idx=(0, 0),
-                filename=f"bode_{label}_scipy.html"
-            )
-
     exit(1)
-
-    # # Solve OPs and build small-signal circuits
-    # for net, label in [(nw_m2, "ro_m2_sml"), (nw_no_ro_m2, "no_ro_m2_sml"), (nw_m1, "ro_m1_sml"), (nw_no_ro_m1, "no_ro_m1_sml")]:
-    #     net.set_beta_multiplier_params(**params)
-    #     root_start = np.zeros(net.ckt.num_edges)
-    #     x = op_solve(net.ckt, root_start)
-    #     op = net.ckt.scb
-    #     net.add_sml_ckt(op=op)
-
-    #     results = sml_sweep(net, vs_sweep)
-    #     plot_sweep(vs_sweep, results, suffix=label)
-
-
-
-    # Stability analysis
-    for net, label in [(nw_m2, "ro_m2"), (nw_no_ro_m2, "no_ro_m2"), (nw_no_ro_m2_stray, "no_ro_m2_stray")]:
-        net.set_beta_multiplier_params(**params)
-        root_start = np.zeros(net.ckt.num_edges)
-        x = op_solve(net.ckt, root_start)
-        op = net.ckt.scb
-        net.add_sml_ckt(op=op)
-
-        iref = net.get_Rref_current(x)
-        #print (iref)
-
-        #eqs = net.ckt_sml.build_mathjax_equations()
-        #math_block = quarto_math_block(eqs)
-        #print(math_block)
-
-        print(f"iref = {iref:.6f}")
-
-        gm_m1, ro_m1 = net.beta_mult.nmos_m1.get_op_sml(op)
-        gm_m2, ro_m2 = net.beta_mult.nmos_m2.get_op_sml(op)
-        gm_m3, ro_m3 = net.beta_mult.pmos_m3.get_op_sml(op)
-        gm_m4, ro_m4 = net.beta_mult.pmos_m4.get_op_sml(op)
-
-        print(f"m1 gm = {gm_m1:.6f}, ro = {ro_m1:.6f}")
-        print(f"m2 gm = {gm_m2:.6f}, ro = {ro_m2:.6f}")
-        print(f"m3 gm = {gm_m3:.6f}, ro = {ro_m3:.6f}")
-        print(f"m4 gm = {gm_m4:.6f}, ro = {ro_m4:.6f}")
-
-    params = {"Rref": DEFAULT_RREF, "Vs": 0.05, "Cstray": 100e-12}
-    nw_no_ro_m2_stray.set_beta_multiplier_sml_params(**params)
-    x0    = np.zeros (nw_no_ro_m2_stray.ckt_sml.get_num_sys_vars())
-    tr, yr = ode_solve(nw_no_ro_m2_stray.ckt_sml, tend=500e-9, tstep=10000, x0=x0)
-    print (yr)
-    plot_tr(tr, yr, filename="plot_beta_dyn.html")
-
-    exit (1)
-    for net, label in [(nw_m2, "ro_m2"), (nw_no_ro_m2, "no_ro_m2"), (nw_no_ro_m2_stray, "no_ro_m2_stray")]:
-        net.set_beta_multiplier_params(**params)
-        root_start = np.zeros(net.ckt.num_edges)
-        #x = op_solve(net.ckt, root_start)
-        #op = net.ckt.scb
-        net.add_sml_ckt(op=root_start)
-
-        #iref = net.get_Rref_current(x)
-        #print (iref)
-
-        eqs = net.ckt_sml.build_mathjax_equations()
-        math_block = quarto_math_block(eqs)
-        print(math_block)
-
-
-
 
 if __name__ == "__main__":
     main()

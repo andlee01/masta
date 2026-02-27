@@ -64,7 +64,7 @@ class beta_multiplier(subckt):
                      "W"      : 30}
 
         nodes = {"g": self.vbiasp, "d": self.vbiasn, "s": self.VCC}
-        self.pmos_m3 = pmos_subckt(instance = self.instance + "M_3", **nodes)
+        self.pmos_m3 = pmos_subckt(instance = self.instance + "M_{3}", **nodes)
         self.pmos_m3.set_params(**m3_params)
         self.isd_ref_m3, self.vsg_ref_m3 = self.pmos_m3.add(ckt)
 
@@ -75,7 +75,7 @@ class beta_multiplier(subckt):
                      "W"      : 30}
 
         nodes = {"g": self.vbiasp, "d": self.vbiasp, "s": self.VCC}
-        self.pmos_m4 = pmos_subckt(instance = self.instance + "M_4", **nodes)
+        self.pmos_m4 = pmos_subckt(instance = self.instance + "M_{4}", **nodes)
         self.pmos_m4.set_params(**m4_params)
         self.isd_ref_m4, self.vsg_ref_m4 = self.pmos_m4.add(ckt)
 
@@ -89,7 +89,7 @@ class beta_multiplier(subckt):
                      "W"      : 10 if res_m2 else 40}
 
         nodes = {"g": self.vbiasn, "d": self.vbiasn, "s": self.GND if res_m2 else n1}
-        self.nmos_m1 = nmos_subckt(instance = self.instance + "M_1", **nodes)
+        self.nmos_m1 = nmos_subckt(instance = self.instance + "M_{1}", **nodes)
         self.nmos_m1.set_params(**m1_params)
         self.ids_ref_m1, self.vgs_ref_m1 = self.nmos_m1.add(ckt)
 
@@ -100,7 +100,7 @@ class beta_multiplier(subckt):
                      "W"      : 40 if res_m2 else 10}
 
         nodes = {"g": self.vbiasn, "d": self.vbiasp, "s": n1 if res_m2 else self.GND}
-        self.nmos_m2 = nmos_subckt(instance = self.instance + "M_2", **nodes)
+        self.nmos_m2 = nmos_subckt(instance = self.instance + "M_{2}", **nodes)
         self.nmos_m2.set_params(**m2_params)
         self.ids_ref_m2, self.vgs_ref_m2 = self.nmos_m2.add(ckt)
 

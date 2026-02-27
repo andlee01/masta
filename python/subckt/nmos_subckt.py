@@ -31,7 +31,7 @@ class nmos_subckt(subckt):
     def add(self, ckt):
         self.ids = vccs_l1_mosfet()
         self.ids.set_type(ElementType.current_src)
-        self.ids.set_instance("IDS")
+        self.ids.set_instance("i_{DS_{" +self.instance + "}}")
         self.ids.set_params(KP=self.KP, \
                             vth=self.vth, \
                             l_lambda=self.l_lambda, \
@@ -40,7 +40,7 @@ class nmos_subckt(subckt):
 
         self.vgs = current_src()
         self.vgs.set_type(ElementType.current_src)
-        self.vgs.set_instance("VGS")
+        self.vgs.set_instance("i_{GS_{" +self.instance + "}}")
 
         self.ids_ref = ckt.add_edge(self.d, self.s, self.ids)
         self.vgs_ref = ckt.add_edge(self.g, self.s, self.vgs)

@@ -27,7 +27,7 @@ class pmos_subckt(subckt):
     def add(self, ckt):
         self.isd = vccs_l1_mosfet()
         self.isd.set_type(ElementType.current_src)
-        self.isd.set_instance("IDS")
+        self.isd.set_instance("i_{SD_{" +self.instance + "}}")
         self.isd.set_params(KP=self.KP, \
                             vth=self.vth, \
                             l_lambda=self.l_lambda, \
@@ -36,7 +36,7 @@ class pmos_subckt(subckt):
 
         self.vsg = current_src()
         self.vsg.set_type(ElementType.current_src)
-        self.vsg.set_instance("VGS")
+        self.vsg.set_instance("i_{SG_{" +self.instance + "}}")
 
         self.isd_ref = ckt.add_edge(self.s, self.d, self.isd)
         self.vsg_ref = ckt.add_edge(self.s, self.g, self.vsg)

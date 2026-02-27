@@ -1,0 +1,342 @@
+---
+title: "Interactive Technical Document Example"
+author: "Your Name"
+date: today
+format:
+  html:
+    toc: true
+    code-fold: true
+    theme: flatly
+    html-math-method: mathjax
+    mathjax:
+      equation-numbering: all
+---
+
+# Introduction
+
+# Large Signal
+
+A beta multiplier circuit is shown in @fig-beta-multiplier_large.
+
+::: {#fig-beta-multiplier_large}
+![](beta_multiplier/beta_multiplier.svg){width=400}
+
+Beta multiplier circuit.
+:::
+
+## Equations
+
+$$
+\begin{aligned}
+0 &= i_{i_{SD_{B_{1}M_{3}}}} -  i_{i_{DS_{B_{1}M_{1}}}} -  i_{i_{GS_{B_{1}M_{1}}}} -  i_{i_{GS_{B_{1}M_{2}}}} \\
+0 &= i_{i_{SG_{B_{1}M_{3}}}} + i_{i_{SD_{B_{1}M_{4}}}} + i_{i_{SG_{B_{1}M_{4}}}} -  i_{i_{DS_{B_{1}M_{2}}}} \\
+0 &= - i_{i_{DS_{B_{1}M_{2}}}} -  i_{i_{GS_{B_{1}M_{2}}}} + i_{B_{1}R_{ref}} \\
+0 &= - i_{i_{DS_{B_{1}M_{1}}}} -  i_{i_{GS_{B_{1}M_{1}}}} -  i_{i_{DS_{B_{1}M_{2}}}} -  i_{i_{GS_{B_{1}M_{2}}}} + i_{V_{DD}} \\
+0 &= - v_{i_{SG_{B_{1}M_{3}}}} + v_{i_{SD_{B_{1}M_{4}}}} \\
+0 &= - v_{i_{SG_{B_{1}M_{3}}}} + v_{i_{SG_{B_{1}M_{4}}}} \\
+0 &= v_{i_{SD_{B_{1}M_{3}}}} + v_{i_{DS_{B_{1}M_{1}}}} -  v_{V_{DD}} \\
+0 &= v_{i_{SD_{B_{1}M_{3}}}} + v_{i_{GS_{B_{1}M_{1}}}} -  v_{V_{DD}} \\
+0 &= v_{i_{SG_{B_{1}M_{3}}}} + v_{i_{DS_{B_{1}M_{2}}}} + v_{B_{1}R_{ref}} -  v_{V_{DD}} \\
+0 &= v_{i_{SD_{B_{1}M_{3}}}} + v_{i_{GS_{B_{1}M_{2}}}} + v_{B_{1}R_{ref}} -  v_{V_{DD}}
+\end{aligned}
+$$
+
+## Derivation of $i_{B_{1}R_{ref}}$
+
+An expression for $i_{B_{1}R_{ref}}$ can be obtained from the KVL equation that includes $v_{B_{1}R_{ref}}$.
+
+From the previously derived system:
+
+$$
+\begin{aligned}
+0 &= v_{i_{SG_{B_{1}M_{3}}}} 
+   + v_{i_{DS_{B_{1}M_{2}}}} 
+   + v_{B_{1}R_{ref}} 
+   - v_{V_S}
+\end{aligned}
+$$
+
+Rearranging to isolate the resistor voltage:
+
+$$
+\begin{aligned}
+v_{B_{1}R_{ref}}
+&= v_{V_S}
+ - v_{i_{SG_{B_{1}M_{3}}}}
+ - v_{i_{DS_{B_{1}M_{2}}}}
+\end{aligned}
+$$
+
+From another KVL equation in the system:
+
+$$
+\begin{aligned}
+0 &= v_{i_{SD_{B_{1}M_{3}}}}
+   + v_{i_{GS_{B_{1}M_{1}}}}
+   - v_{V_S}
+\end{aligned}
+$$
+
+which gives:
+
+$$
+\begin{aligned}
+v_{V_S}
+&= v_{i_{SD_{B_{1}M_{3}}}}
+ + v_{i_{GS_{B_{1}M_{1}}}}
+\end{aligned}
+$$
+
+Substituting into the expression for $v_{B_{1}R_{ref}}$:
+
+$$
+\begin{aligned}
+v_{B_{1}R_{ref}}
+&= \left(
+     v_{i_{SD_{B_{1}M_{3}}}}
+     + v_{i_{GS_{B_{1}M_{1}}}}
+   \right)
+ - v_{i_{SG_{B_{1}M_{3}}}}
+ - v_{i_{DS_{B_{1}M_{2}}}}
+\end{aligned}
+$$
+
+and since $B_{1}M_{4}$ is diode-connected, its source–drain voltage magnitude is equal to its source–gate voltage magnitude. From the constraint equations:
+
+$$
+\begin{aligned}
+0 &= - v_{i_{SG_{B_{1}M_{3}}}}
+     + v_{i_{SD_{B_{1}M_{4}}}} \\
+0 &= - v_{i_{SG_{B_{1}M_{3}}}}
+     + v_{i_{SG_{B_{1}M_{4}}}}
+\end{aligned}
+$$
+
+we obtain
+
+$$
+\begin{aligned}
+v_{i_{SG_{B_{1}M_{3}}}}
+&=
+v_{i_{SD_{B_{1}M_{4}}}}
+\\
+&=
+v_{i_{SG_{B_{1}M_{4}}}}
+\end{aligned}
+$$
+
+Substituting:
+
+$$
+\begin{aligned}
+v_{B_{1}R_{ref}}
+&= v_{i_{SD_{B_{1}M_{3}}}}
+ + v_{i_{GS_{B_{1}M_{1}}}}
+ - v_{i_{SD_{B_{1}M_{3}}}}
+ - v_{i_{DS_{B_{1}M_{2}}}}
+\end{aligned}
+$$
+
+Canceling terms:
+
+$$
+\begin{aligned}
+v_{B_{1}R_{ref}}
+&= v_{i_{GS_{B_{1}M_{1}}}}
+ - v_{i_{DS_{B_{1}M_{2}}}}
+\end{aligned}
+$$
+
+Because $B_{1}M_{1}$ is diode-connected, its gate and drain are shorted. From the constraint equations:
+
+$$
+\begin{aligned}
+0 &= v_{i_{SD_{B_{1}M_{3}}}} + v_{i_{DS_{B_{1}M_{1}}}} - v_{V_S} \\
+0 &= v_{i_{SD_{B_{1}M_{3}}}} + v_{i_{GS_{B_{1}M_{1}}}} - v_{V_S}
+\end{aligned}
+$$
+
+Subtracting these two equations eliminates $v_{i_{SD_{B_{1}M_{3}}}}$ and $v_{V_S}$, yielding
+
+$$
+\begin{aligned}
+v_{i_{DS_{B_{1}M_{1}}}}
+=
+v_{i_{GS_{B_{1}M_{1}}}}
+\end{aligned}
+$$
+
+Therefore:
+
+$$
+\begin{aligned}
+v_{B_{1}R_{ref}}
+&=
+v_{i_{GS_{B_{1}M_{1}}}}
+-
+v_{i_{GS_{B_{1}M_{2}}}}
+\end{aligned}
+$$
+
+Applying Ohm’s law to the reference resistor:
+
+$$
+\begin{aligned}
+i_{B_{1}R_{ref}}
+&=
+\frac{
+v_{B_{1}R_{ref}}
+}{
+R_{ref}
+}
+\end{aligned}
+$$
+
+Substituting the expression above yields:
+
+$$
+\begin{aligned}
+i_{B_{1}R_{ref}}
+&=
+\frac{
+v_{i_{GS_{B_{1}M_{1}}}}
+-
+v_{i_{GS_{B_{1}M_{2}}}}
+}{
+R_{ref}
+}
+\end{aligned}
+$$
+
+This expression shows that the reference current is determined by the difference in the gate–source voltages of $B_{1}M_{1}$ and $B_{1}M_{2}$, scaled by the reference resistance.
+
+## Supply Independence of the Beta-Multiplier Reference
+
+The reference current in the beta-multiplier circuit is expressed as
+
+$$
+\begin{aligned}
+i_{B_{1}R_{ref}}
+=
+\frac{
+v_{i_{GS_{B_{1}M_{1}}}}
+-
+v_{i_{GS_{B_{1}M_{2}}}}
+}{
+R_{ref}
+}
+\end{aligned}
+$$
+
+To examine its supply dependence, the gate–source voltages can be expressed in terms of transistor parameters under the long-channel approximation, neglecting channel-length modulation. In saturation, the drain current of a MOSFET is
+
+$$
+\begin{aligned}
+i_D = \frac{1}{2} \beta (V_{GS} - V_\text{th})^2
+\end{aligned}
+$$
+
+where $\beta = \mu C_\text{ox} W/L$.  
+
+Applying this to $B_{1}M_{1}$ and $B_{1}M_{2}$ yields
+
+$$
+\begin{aligned}
+i_{D1} &= \frac{1}{2} \beta_1 \left( V_{GS,M_1} - V_\text{th} \right)^2 \\
+i_{D2} &= \frac{1}{2} \beta_2 \left( V_{GS,M_2} - V_\text{th} \right)^2
+\end{aligned}
+$$
+
+Solving for the gate–source voltages in terms of the drain currents results in
+
+$$
+\begin{aligned}
+V_{GS,M_1} &= V_\text{th} + \sqrt{\frac{2 i_{D1}}{\beta_1}} \\
+V_{GS,M_2} &= V_\text{th} + \sqrt{\frac{2 i_{D2}}{\beta_2}} 
+\end{aligned}
+$$
+
+Substituting these expressions into the reference current equation gives
+
+$$
+\begin{aligned}
+i_{B_{1}R_{ref}}
+=
+\frac{ \sqrt{\frac{2 i_{D1}}{\beta_1}} - \sqrt{\frac{2 i_{D2}}{\beta_2}} }{R_{ref}}
+\end{aligned}
+$$
+
+At equilibrium, the beta-multiplier enforces $i_{D1} = i_{D2} = i_{B_{1}R_{ref}}$, which leads to the self-consistent equation
+
+$$
+\begin{aligned}
+i_{B_{1}R_{ref}} = \frac{1}{R_{ref}} 
+\left( \sqrt{\frac{2 i_{B_{1}R_{ref}}}{\beta_1}} - \sqrt{\frac{2 i_{B_{1}R_{ref}}}{\beta_2}} \right)
+\end{aligned}
+$$
+
+This equation can be rearranged to yield the closed-form solution for the reference current:
+
+$$
+\begin{aligned}
+i_{B_{1}R_{ref}} = \frac{1}{2 R_{ref}^2} 
+\left( \frac{1}{\beta_1} - \frac{1}{\beta_2} \right)^{-2}
+\end{aligned}
+$$
+
+Importantly, this expression is independent of the supply voltage. Provided both transistors remain in saturation and the resistor $R_{ref}$ is constant, variations in $V_{DD}$ have negligible effect on $i_{B_{1}R_{ref}}$. This demonstrates that the beta-multiplier topology provides a supply-independent reference current, determined primarily by device matching and the reference resistance.
+
+::: {#fig-large-signal-iref-no-ro}
+<iframe src="beta_multiplier/beta_multiplier_iref_no_ro_m2.html" width="800" height="600" style="border:none;"></iframe>
+$i_{B_{1}R_{\text{ref}}}$ variation with supply voltage
+:::
+
+@fig-large-signal-iref-no-ro shows the variation of $i_{B_{1}R_{\text{ref}}}$ as a function of the supply voltage $V_{DD}$. When the sweep range is restricted to ensure that all transistors remain in saturation, no variation in the current is observed.
+
+## Effects of Channel Length Modulation
+The analysis above assumes that channel-length modulation is neglected (i.e., $\lambda = 0$). When channel-length modulation is taken into account, the device equations acquire a dependence on the supply voltage due to the finite output resistance of the transistors. This introduces a supply-voltage-dependent term in the expression for $i_{B_{1}R_{\text{ref}}}$.
+
+As a result, $i_{B_{1}R_{\text{ref}}}$ is no longer perfectly independent of $V_{DD}$. However, provided that all devices remain in saturation, the output resistance remains large and the resulting variation in current is minimal. This behavior is illustrated in Figure @fig-large-signal-iref, where only a small deviation in current is observed over the valid operating range.
+
+::: {#fig-large-signal-iref}
+<iframe src="beta_multiplier/beta_multiplier_iref_ro_m2.html" width="800" height="600" style="border:none;"></iframe>
+$i_{B_{1}R_{\text{ref}}}$ variation with supply voltage
+:::
+
+# Small Signal
+
+::: {#fig-beta-multiplier_small_signal}
+![](beta_multiplier/beta_multiplier_small_signal.svg){width=600}
+
+Small-signal beta multiplier circuit.
+:::
+
+# Loop Gain
+
+The small-signal beta multiplier circuit with the feedback loop opened is shown in @fig-beta-multiplier-small-signal-loop-gain. The input is applied to the gate of $M_2$, and the output is taken as the drain–source voltage of $M_1$, which corresponds to the node at which the feedback loop was broken. This configuration allows the open-loop gain and phase response of the circuit to be evaluated.
+
+::: {#fig-beta-multiplier-small-signal-loop-gain}
+![](beta_multiplier/beta_multiplier_loop_gain_small_signal.svg){width=600}
+
+Small-signal beta multiplier circuit with loop opened for gain and phase analysis.
+:::
+
+The frequency response of the circuit is shown in @fig-beta-multiplier-open-loop-bode-plot. 
+
+::: {#fig-beta-multiplier-open-loop-bode-plot}
+<iframe src="beta_multiplier/bode_ro_m2_sml_open_loop.html" width="800" height="600" style="border:none;"></iframe>
+Bode plot of the open loop small signal beta multiplier.
+:::
+
+
+At low frequencies, the output signal is attenuated and remains approximately in phase with the input. In this regime, the degeneration capacitor presents a high impedance and therefore behaves effectively as an open circuit. As a result, the source degeneration resistance remains unchanged, and the small-signal gain is limited by the full degeneration impedance. Since the degeneration element is purely resistive in this limit, no additional phase shift is introduced, and the output remains approximately in phase with the input.
+
+As the frequency increases, the impedance of the degeneration capacitor decreases. This allows the capacitor to increasingly influence the degeneration node by providing an additional parallel current path. As discussed in [capacitor frequency response](capacitor.qmd#sec-rc-frequency-response), the voltage across a capacitor exhibits a frequency-dependent phase shift when driven by a sinusoidal source, arising from the derivative term in its governing differential equation.
+
+In the present circuit, this behaviour introduces a phase shift between the input voltage and the source node of $M_2$. Since the small-signal drain current of $M_2$ is controlled by its gate–source voltage, $v_{gs}$, any phase shift at the source node directly modifies both the magnitude and phase of the transistor’s small-signal current. This current is subsequently mirrored to the output through the active load, causing the overall loop gain to exhibit both amplitude variation and phase shift.
+
+At the same time, the decreasing capacitive reactance reduces the effective source degeneration impedance. This reduction in degeneration increases the effective small-signal transconductance of the stage, resulting in an increase in the loop gain magnitude. Thus, the capacitor does not merely reduce the degeneration impedance in magnitude; it introduces a reactive component that alters the phase relationship between the input voltage and the controlled current source formed by $M_2$. This combined effect explains the observed rise in gain and the accompanying phase variation in the intermediate frequency region.
+
+At higher frequencies, the capacitive reactance becomes much smaller than the degeneration resistance, and the capacitor effectively behaves as a short circuit. In this limit, the degeneration resistance is largely bypassed, and the source node becomes effectively AC-grounded. Consequently, the gate–source voltage of $M_2$ closely follows the input voltage with minimal attenuation or additional phase shift introduced by the degeneration network. The gain therefore approaches its maximum value, determined primarily by the intrinsic small-signal parameters of transistors $M_1$ through $M_4$, rather than by external degeneration. Since the degeneration impedance is now dominated by the capacitor’s near-zero reactance, its ability to introduce additional phase shift diminishes, and the phase response correspondingly returns toward its high-frequency asymptotic value.
+
+Overall, the observed frequency response arises from the progressive reduction of source degeneration and the introduction of reactive phase shift by the degeneration capacitor: at low frequencies the capacitor is ineffective and full degeneration limits the gain, at intermediate frequencies its decreasing reactance both increases the effective transconductance and introduces phase shift, and at high frequencies it effectively shorts the degeneration resistance, allowing the gain to approach its intrinsic maximum while the phase response stabilises.

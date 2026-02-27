@@ -14,7 +14,7 @@ format:
 
 # Introduction
 
-# Output Magnitude and Phase in RC circuit
+# Output Magnitude and Phase in RC circuit {#sec-rc-frequency-response}
 The Bode plot of the RC circuit is shown in @fig-rc-bode-plot. Both the magnitude and phase of the output voltage vary as a function of frequency due to the finite response time of the capacitor. Unlike an ideal instantaneous device, a capacitor requires time for charge to accumulate or dissipate in response to changes in the applied voltage. This time-dependent behavior results in both attenuation of the output signal and a phase shift relative to the input.
 
 ::: {#fig-rc-bode-plot}
