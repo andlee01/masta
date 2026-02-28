@@ -132,15 +132,15 @@ def sweep(nw, vs_sweep):
          vgs_m2_sweep[vs_idx]) = vals
 
     return {
-        "isd_m3": isd_m3_sweep,
-        "vsg_m3": vsg_m3_sweep,
-        "isd_m4": isd_m4_sweep,
-        "vsg_m4": vsg_m4_sweep,
-        "ids_m1": ids_m1_sweep,
-        "vgs_m1": vgs_m1_sweep,
-        "ids_m2": ids_m2_sweep,
-        "vgs_m2": vgs_m2_sweep,
-        "irref":  irref_sweep
+        "$v_{i_{SD_{B_{1}M_{3}}}}$": isd_m3_sweep,
+        "$v_{i_{SG_{B_{1}M_{3}}}}$": vsg_m3_sweep,
+        "$v_{i_{SD_{B_{1}M_{4}}}}$": isd_m4_sweep,
+        "$v_{i_{SG_{B_{1}M_{4}}}}$": vsg_m4_sweep,
+        "$v_{i_{DS_{B_{1}M_{1}}}}$": ids_m1_sweep,
+        "$v_{i_{GS_{B_{1}M_{1}}}}$": vgs_m1_sweep,
+        "$v_{i_{DS_{B_{1}M_{2}}}}$": ids_m2_sweep,
+        "$v_{i_{GS_{B_{1}M_{2}}}}$": vgs_m2_sweep,
+        "$i_{B_{1}R_{ref}}$":        irref_sweep
     }
 
 # ------------------------------------------------------------------------------
@@ -183,15 +183,15 @@ def sml_sweep(nw, vs_sml_sweep):
          vgs_m2_sml_sweep[vs_idx]) = vals
 
     return {
-        "isd_m3": isd_m3_sml_sweep,
-        "vsg_m3": vsg_m3_sml_sweep,
-        "isd_m4": isd_m4_sml_sweep,
-        "vsg_m4": vsg_m4_sml_sweep,
-        "ids_m1": ids_m1_sml_sweep,
-        "vgs_m1": vgs_m1_sml_sweep,
-        "ids_m2": ids_m2_sml_sweep,
-        "vgs_m2": vgs_m2_sml_sweep,
-        "irref":  irref_sml_sweep
+        "$v_{i_{SD_{B_{1}M_{3}}}}$": isd_m3_sml_sweep,
+        "$v_{i_{SG_{B_{1}M_{3}}}}$": vsg_m3_sml_sweep,
+        "$v_{i_{SD_{B_{1}M_{4}}}}$": isd_m4_sml_sweep,
+        "$v_{i_{SG_{B_{1}M_{4}}}}$": vsg_m4_sml_sweep,
+        "$v_{i_{DS_{B_{1}M_{1}}}}$": ids_m1_sml_sweep,
+        "$v_{i_{GS_{B_{1}M_{1}}}}$": vgs_m1_sml_sweep,
+        "$v_{i_{DS_{B_{1}M_{2}}}}$": ids_m2_sml_sweep,
+        "$v_{i_{GS_{B_{1}M_{2}}}}$": vgs_m2_sml_sweep,
+        "$i_{B_{1}R_{ref}}$":        irref_sml_sweep
     }
 
 def sml_sweep_m2(nw, vs_sml_sweep):
@@ -232,20 +232,177 @@ def sml_sweep_m2(nw, vs_sml_sweep):
          vgs_m2_sml_sweep[vs_idx]) = vals
 
     return {
-        "isd_m3": isd_m3_sml_sweep,
-        "vsg_m3": vsg_m3_sml_sweep,
-        "isd_m4": isd_m4_sml_sweep,
-        "vsg_m4": vsg_m4_sml_sweep,
-        "ids_m1": ids_m1_sml_sweep,
-        "vgs_m1": vgs_m1_sml_sweep,
-        "ids_m2": ids_m2_sml_sweep,
-        "vgs_m2": vgs_m2_sml_sweep,
-        "irref":  irref_sml_sweep
+        "$v_{i_{SD_{B_{1}M_{3}}}}$": isd_m3_sml_sweep,
+        "$v_{i_{SG_{B_{1}M_{3}}}}$": vsg_m3_sml_sweep,
+        "$v_{i_{SD_{B_{1}M_{4}}}}$": isd_m4_sml_sweep,
+        "$v_{i_{SG_{B_{1}M_{4}}}}$": vsg_m4_sml_sweep,
+        "$v_{i_{DS_{B_{1}M_{1}}}}$": ids_m1_sml_sweep,
+        "$v_{i_{GS_{B_{1}M_{1}}}}$": vgs_m1_sml_sweep,
+        "$v_{i_{DS_{B_{1}M_{2}}}}$": ids_m2_sml_sweep,
+        "$v_{i_{GS_{B_{1}M_{2}}}}$": vgs_m2_sml_sweep,
+        "$i_{B_{1}R_{ref}}$":        irref_sml_sweep
     }
 
 # ------------------------------------------------------------------------------
 # Plotting Functions
 # ------------------------------------------------------------------------------
+def plot_tr_new(
+    x,
+    y,
+    filename="plot.html",
+    title="System Response",
+    x_label="Time (s)",
+    labels=None,
+    quantity_types=None,
+    extensions=None,
+):
+    import numpy as np
+    import plotly.graph_objects as go
+
+    # --- Ensure proper array shapes ---
+    x = np.asarray(x)
+    y = np.asarray(y)
+
+    if y.ndim == 1:
+        y = y.reshape(-1, 1)
+
+    num_signals = y.shape[1]
+
+    labels = labels or [f"Signal {i}" for i in range(num_signals)]
+    quantity_types = quantity_types or ["voltage"] * num_signals
+
+    context = {}
+
+    # --- Run preprocess extensions ---
+    if extensions:
+        for ext in extensions:
+            if getattr(ext, "preprocess", False):
+                ext(None, x, y, labels, quantity_types, context=context)
+
+    x_plot = context.get("x_crop", x)
+    y_plot = context.get("y_crop", y)
+
+    # --- Helper: compute padded limits ---
+    def padded_limits(data, pad=0.05, include_zero=False):
+
+        if data.size == 0:
+            return [-1, 1]
+
+        dmin = np.min(data)
+        dmax = np.max(data)
+
+        if include_zero:
+            dmin = min(dmin, 0)
+            dmax = max(dmax, 0)
+
+        span = dmax - dmin
+
+        if span == 0:
+            span = abs(dmax) if dmax != 0 else 1
+
+        return [
+            dmin - pad * span,
+            dmax + pad * span
+        ]
+
+    # --- Separate voltage and current signals safely ---
+    v_idxs = [
+        i for i, qt in enumerate(quantity_types[:y_plot.shape[1]])
+        if qt.lower() == "voltage"
+    ]
+
+    i_idxs = [
+        i for i, qt in enumerate(quantity_types[:y_plot.shape[1]])
+        if qt.lower() == "current"
+    ]
+
+    v_range = padded_limits(y_plot[:, v_idxs]) if v_idxs else [-1, 1]
+    i_range = padded_limits(y_plot[:, i_idxs]) if i_idxs else [-1, 1]
+
+    # --- Create figure ---
+    fig = go.Figure()
+
+    for i in range(num_signals):
+
+        is_voltage = quantity_types[i].lower() == "voltage"
+
+        fig.add_trace(
+            go.Scatter(
+                x=x_plot,
+                y=y_plot[:, i],
+                name=labels[i],
+                yaxis="y" if is_voltage else "y2",
+                mode="lines",
+            )
+        )
+
+    # --- Layout ---
+    fig.update_layout(
+
+        title=dict(
+            text=title,
+            x=0.5,
+            xanchor="center"
+        ),
+
+        xaxis=dict(
+            title=x_label,
+            domain=[0.0, 0.85],
+            showgrid=True,
+        ),
+
+        yaxis=dict(
+            title="Voltage (V)",
+            side="left",
+            range=v_range,
+            zeroline=True,
+            zerolinecolor="gray",
+            zerolinewidth=1,
+        ),
+
+        yaxis2=dict(
+            title="Current (A)",
+            side="right",
+            overlaying="y",
+            anchor="x",
+            range=i_range,
+            showgrid=False,
+            zeroline=True,
+            zerolinecolor="gray",
+            zerolinewidth=1,
+        ),
+
+        legend=dict(
+            x=1.02,
+            y=1,
+            xanchor="left",
+            yanchor="top",
+            bgcolor="rgba(255,255,255,0.9)",
+            bordercolor="lightgray",
+            borderwidth=1
+        ),
+
+        template="plotly_white",
+
+        margin=dict(
+            l=70,
+            r=140,
+            t=60,
+            b=60
+        ),
+    )
+
+    # --- Run post extensions ---
+    if extensions:
+        for ext in extensions:
+            if not getattr(ext, "preprocess", False):
+                ext(fig, x_plot, y_plot, labels, quantity_types, context=context)
+
+    # --- Save ---
+    fig.write_html(filename, include_mathjax="cdn")
+
+    print(f"✅ Plot saved to {filename}")
+
 
 def plot_sweep(vs_sweep, results, output_dir, suffix="ro"):
     """Generate interactive Plotly plots with LaTeX-rendered titles and legends."""
@@ -291,7 +448,7 @@ def plot_sweep(vs_sweep, results, output_dir, suffix="ro"):
     # Drain/source currents
     save_plot(
         vs_sweep,
-        [results["isd_m3"], results["isd_m4"], results["ids_m1"], results["ids_m2"]],
+        [results["isd_m3"], results["isd_m4"], results["$v_{i_{DS_{B_{1}M_{1}}}}$"], results["ids_m2"]],
         ["$$I_{SD,M3}$$", "$$I_{SD,M4}$$", "$$I_{DS,M1}$$", "$$I_{DS,M2}$$"],
         f"beta_multiplier_ds_{suffix}.html",
         "$$I$$ (A)",
@@ -500,7 +657,34 @@ def main():
     for net, label in [(nw_m2, "ro_m2"), (nw_no_ro_m2, "no_ro_m2"), (nw_m1, "ro_m1"), (nw_no_ro_m1, "no_ro_m1")]:
         results = sweep(net, lrg_vs_sweep)
         # Pass output_dir directly
-        plot_sweep(lrg_vs_sweep, results, output_dir, suffix=label)
+        #plot_sweep(lrg_vs_sweep, results, output_dir, suffix=label)
+
+        cycle_filename = output_dir / f"beta_multiplier_{label}.html"
+
+        # Labels (dict keys)
+        labels = list(results.keys())
+
+        # Stack signals into 2D array
+        yr = np.column_stack([
+            np.asarray(results[k]).reshape(-1)
+            for k in labels
+        ])
+
+        # generate quantity types FROM labels (guaranteed same length)
+        quantity_types = [
+            "current" if label.startswith("$i_") else "voltage"
+            for label in labels
+        ]
+
+        plot_tr_new(
+            lrg_vs_sweep,
+            yr,
+            labels=labels,
+            quantity_types=quantity_types,
+            x_label="$V_{DD}$",
+            filename=str(cycle_filename),
+            extensions=[]
+        )
 
     # Solve OPs and build small-signal circuits
     for net, base_label in [(nw_m2, "ro_m2_sml")]:
@@ -533,7 +717,34 @@ def main():
         label = f"{base_label}"
         
         # Pass output_dir directly
-        plot_sweep(m2_sweep, results, output_dir, suffix=label)
+        #plot_sweep(m2_sweep, results, output_dir, suffix=label)
+
+        cycle_filename = output_dir / f"beta_multiplier_open_loop_{label}.html"
+
+        # Labels (dict keys)
+        labels = list(results.keys())
+
+        # Stack signals into 2D array
+        yr = np.column_stack([
+            np.asarray(results[k]).reshape(-1)
+            for k in labels
+        ])
+
+        # generate quantity types FROM labels (guaranteed same length)
+        quantity_types = [
+            "current" if label.startswith("$i_") else "voltage"
+            for label in labels
+        ]
+
+        plot_tr_new(
+            m2_sweep,
+            yr,
+            labels=labels,
+            quantity_types=quantity_types,
+            x_label="$V_{test}$",
+            filename=str(cycle_filename),
+            extensions=[]
+        )
 
     # Solve OPs and build SS small-signal circuits
     for net, base_label in [(nw_m2_ss, "ro_m2_sml")]:

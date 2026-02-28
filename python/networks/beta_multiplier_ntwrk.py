@@ -43,7 +43,7 @@ class beta_multiplier_ntwrk():
 
         # Nodes
         GND    = 0
-        VCC    = 0 if lti else 1
+        VCC    = 0 #if lti else 1
         vbiasn = 2
         vbiasp = 3
 

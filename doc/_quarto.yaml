@@ -1,0 +1,19 @@
+project:
+  type: website
+  render:
+    - capacitor.qmd
+    - beta_multiplier.qmd
+
+website:
+  title: "Analog Circuit Analysis"
+  navbar:
+    left:
+      - href: capacitor.qmd
+        text: Capacitor Analysis
+      - href: beta_multiplier.qmd
+        text: Beta Multiplier
+
+format:
+  html:
+    toc: true
+    number-sections: true

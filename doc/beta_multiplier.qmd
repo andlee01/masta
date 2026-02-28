@@ -279,15 +279,16 @@ This equation can be rearranged to yield the closed-form solution for the refere
 
 $$
 \begin{aligned}
-i_{B_{1}R_{ref}} = \frac{1}{2 R_{ref}^2} 
-\left( \frac{1}{\beta_1} - \frac{1}{\beta_2} \right)^{-2}
+i_{B_{1}R_{ref}} = \frac{2}{\beta_1 R_{ref}^2} \left( 1 - \frac{1}{\sqrt{K}} \right)^2
 \end{aligned}
 $$
+
+where $K = \frac{\beta_2}{\beta_1}$.  
 
 Importantly, this expression is independent of the supply voltage. Provided both transistors remain in saturation and the resistor $R_{ref}$ is constant, variations in $V_{DD}$ have negligible effect on $i_{B_{1}R_{ref}}$. This demonstrates that the beta-multiplier topology provides a supply-independent reference current, determined primarily by device matching and the reference resistance.
 
 ::: {#fig-large-signal-iref-no-ro}
-<iframe src="beta_multiplier/beta_multiplier_iref_no_ro_m2.html" width="800" height="600" style="border:none;"></iframe>
+<iframe src="beta_multiplier/beta_multiplier_no_ro_m2.html" width="800" height="600" style="border:none;"></iframe>
 $i_{B_{1}R_{\text{ref}}}$ variation with supply voltage
 :::
 
@@ -299,9 +300,35 @@ The analysis above assumes that channel-length modulation is neglected (i.e., $\
 As a result, $i_{B_{1}R_{\text{ref}}}$ is no longer perfectly independent of $V_{DD}$. However, provided that all devices remain in saturation, the output resistance remains large and the resulting variation in current is minimal. This behavior is illustrated in Figure @fig-large-signal-iref, where only a small deviation in current is observed over the valid operating range.
 
 ::: {#fig-large-signal-iref}
-<iframe src="beta_multiplier/beta_multiplier_iref_ro_m2.html" width="800" height="600" style="border:none;"></iframe>
+<iframe src="beta_multiplier/beta_multiplier_ro_m2.html" width="800" height="600" style="border:none;"></iframe>
 $i_{B_{1}R_{\text{ref}}}$ variation with supply voltage
 :::
+
+## Analysis of Asymmetric Current Scaling ($M \neq 1$)
+
+In the standard beta multiplier topology, the PMOS mirror transistors ($M_3, M_4$) are typically designed with an identical aspect ratio ($M=1$). However, the circuit can be designed with a scaling factor $M$, where $(W/L)_3 = M \cdot (W/L)_4$, thereby forcing the condition $i_{D1} = M \cdot i_{D2}$. 
+
+### Reference Current Derivation for $M \neq 1$
+Assuming all devices remain in saturation and neglecting channel-length modulation ($\lambda = 0$), the reference current through the resistor branch ($i_{B_{1}R_{ref}} = i_{D2}$) is defined by:
+
+$$
+i_{B_{1}R_{ref}} = \frac{2}{\beta_1 R_{ref}^2} \left( \sqrt{M} - \frac{1}{\sqrt{K}} \right)^2
+$$
+
+While the idealized expression suggests that supply independence is maintained for any constant $M$, practical implementation reveals that $M \neq 1$ introduces significant sensitivities to second-order effects.
+
+### Sensitivity to Transistor Operating Points
+The primary advantage of the $M=1$ configuration is that it ensures both PMOS transistors operate at the exact same bias point on their transconductance curves. When $M \neq 1$, the transistors operate at different current densities, requiring different gate-source voltages ($V_{GS3} \neq V_{GS4}$). 
+
+Because the $I_D$ vs. $V_{GS}$ relationship is non-linear (square-law), the two transistors exist on different slopes of their characteristic curves. In this specific topology, $M_4$ is constrained by its diode connection ($V_{DS4} = V_{GS4} = V_{GS3}$), while $V_{DS3}$ fluctuates with $V_{DD}$. When the supply voltage varies, the finite output resistance ($\lambda > 0$) modulates the currents. Because the devices are at different operating points, this modulation does not affect them proportionally. This leads to a drift in the ratio $M$, which directly translates into a supply-dependent error in $i_{B_{1}R_{ref}}$.
+
+### Layout Symmetry and Matching
+The $M=1$ ratio allows for the use of unit-cell layout techniques, such as common-centroid interdigitation. This ensures that process gradients (variations in oxide thickness or doping concentration across the die) affect both devices identically. 
+
+Asymmetry ($M \neq 1$) complicates the layout and reduces the effectiveness of these cancellation techniques. Any mismatch in the threshold voltage ($V_{th}$) or mobility ($\mu$) between $M_3$ and $M_4$ is amplified when the devices are not identical, resulting in a systematic offset in the reference current that cannot be easily calibrated or compensated.
+
+### Voltage Headroom and Compliance
+Asymmetric scaling further impacts the minimum operating supply voltage ($V_{DD,min}$). If $M$ is significantly greater than unity, the increased current through $M_1$ necessitates a higher $V_{GS1}$. Because $M_1$ is diode-connected, this increases the potential at the shared gate node of the NMOS pair, which in turn elevates the drain potential of $M_2$. This reduction in the voltage headroom available for $M_3$ forces the transistor to enter the triode region at a higher $V_{DD}$ than in a symmetric design. Once $M_3$ enters triode, the current-mirror relationship collapses, and the circuit loses its supply-independent characteristics.
 
 # Small Signal
 
@@ -312,11 +339,74 @@ Small-signal beta multiplier circuit.
 :::
 
 # Loop Gain
+The beta multiplier is a circuit that exhibits positive feedback. In the presence of noise, the gate voltages of $M_1$ through $M_4$ may be perturbed. Due to the circuit topology, this perturbation is reinforced by the feedback loop. For example, if noise causes the gate–source voltage of $M_2$ to increase, the drain current of $M_2$ will also increase. This increased current is mirrored into $M_1$, which raises the voltage at the shared gate node. This further increases the gate–source voltage of the transistors, reinforcing the original disturbance. This regenerative behavior is characteristic of positive feedback.
 
-The small-signal beta multiplier circuit with the feedback loop opened is shown in @fig-beta-multiplier-small-signal-loop-gain. The input is applied to the gate of $M_2$, and the output is taken as the drain–source voltage of $M_1$, which corresponds to the node at which the feedback loop was broken. This configuration allows the open-loop gain and phase response of the circuit to be evaluated.
+Although positive feedback tends to amplify disturbances, the system can remain stable provided the loop gain is less than unity. The loop gain is defined as the gain experienced by a signal as it propagates once around the feedback loop. If the magnitude of the loop gain is less than 1, any perturbation is attenuated on each successive pass through the loop, and the system converges to a stable operating point. Conversely, if the loop gain exceeds 1, perturbations grow over time, leading to instability.
+
+The small-signal beta multiplier circuit with the feedback loop opened is shown in @fig-beta-multiplier-small-signal-loop-gain. The loop is broken at the gate of $M_2$, and a test voltage $V_{test}$ is applied. The resulting small-signal voltage at the drain of $M_1$, which corresponds to the return point of the feedback loop, is measured. The ratio of the returned signal to the injected test signal defines the loop gain.
 
 ::: {#fig-beta-multiplier-small-signal-loop-gain}
 ![](beta_multiplier/beta_multiplier_loop_gain_small_signal.svg){width=600}
+
+Small-signal beta multiplier circuit with loop opened for gain analysis.
+:::
+
+From @fig-beta-multiplier-small-signal-loop-gain, the loop gain is calculated as
+
+$$
+A_{loop} = \frac{v_{DS_{M_1}}}{V_{test}} = \frac{0.6464}{1.0} = 0.6464
+$$
+
+which corresponds to
+
+$$
+20 \log_{10}(0.6464) = -3.73\ \text{dB}
+$$
+
+Since the magnitude of the loop gain is less than unity (0 dB), any small perturbation is reduced each time it circulates around the loop. As a result, disturbances decay over time rather than growing, and the operating point is stable. This confirms that, despite the presence of positive feedback, the beta multiplier circuit is stable because the feedback is insufficient to sustain or amplify deviations from equilibrium.
+
+::: {#fig-small-signal-loop-gain}
+<iframe src="beta_multiplier/beta_multiplier_open_loop_ro_m2_sml.html" width="800" height="600" style="border:none;"></iframe>
+$v_{i_{DS_{B_{1}M_{1}}}}$ variation with applied test voltage
+:::
+
+## Intuitive Explanation of Loop Gain
+
+Loop gain is a measure of how strongly a system feeds a signal back into itself. It describes what happens to a small disturbance after it travels once completely around a feedback loop and returns to its starting point.
+
+An intuitive way to understand loop gain is to imagine injecting a small test signal into a loop and observing how much of that signal returns after one full cycle through the system.
+
+- If the returned signal is **larger** than the original disturbance, the loop gain is greater than 1. In this case, each cycle amplifies the disturbance, causing it to grow over time. This leads to instability.
+- If the returned signal is **equal** to the original disturbance, the loop gain is exactly 1. The disturbance persists indefinitely without growing or decaying. This condition represents marginal stability.
+- If the returned signal is **smaller** than the original disturbance, the loop gain is less than 1. Each pass through the loop reduces the disturbance, causing it to decay over time. This corresponds to a stable system.
+
+This process can be visualized as repeated circulation around the loop. If the loop gain is denoted by $A_{loop}$, and an initial disturbance of magnitude $x_0$ is introduced, the magnitude after successive passes becomes
+
+$$
+x_1 = A_{loop} x_0
+$$
+
+$$
+x_2 = A_{loop}^2 x_0
+$$
+
+$$
+x_3 = A_{loop}^3 x_0
+$$
+
+and so on. When $|A_{loop}| < 1$, each successive term becomes smaller, and the disturbance eventually disappears.
+
+Loop gain is therefore a direct indicator of stability. It determines whether disturbances are attenuated or reinforced by the feedback mechanism. Systems with loop gain magnitude less than one are stable because disturbances naturally decay, while systems with loop gain greater than one are unstable because disturbances grow.
+
+In practical circuit analysis, loop gain is determined by breaking the feedback loop, applying a test signal, and measuring the signal that returns to the break point. This provides a clear and quantitative measure of the feedback strength and stability of the system.
+
+## Loop Gain With Stray Capacitance
+The preceding analysis applies to the DC operation of the beta multiplier. However, a complete stability assessment requires examination of the circuit under AC conditions, since parasitic capacitances introduce additional frequency-dependent effects into the feedback loop.
+
+As an illustrative example, consider a stray capacitance $C_{stray}$ in parallel with the reference resistor $R_{ref}$ as shown in @fig-beta-multiplier-small-signal-loop-gain-cstray. This situation commonly arises when the reference resistor is located off chip, as bond wires, pads, and interconnect parasitics introduce unintended capacitance. The presence of $C_{stray}$ modifies the feedback network impedance as a function of frequency, thereby altering both the magnitude and phase of the loop gain.
+
+::: {#fig-beta-multiplier-small-signal-loop-gain-cstray}
+![](beta_multiplier/beta_multiplier_loop_gain_small_signal_cstray.svg){width=600}
 
 Small-signal beta multiplier circuit with loop opened for gain and phase analysis.
 :::
@@ -327,7 +417,6 @@ The frequency response of the circuit is shown in @fig-beta-multiplier-open-loop
 <iframe src="beta_multiplier/bode_ro_m2_sml_open_loop.html" width="800" height="600" style="border:none;"></iframe>
 Bode plot of the open loop small signal beta multiplier.
 :::
-
 
 At low frequencies, the output signal is attenuated and remains approximately in phase with the input. In this regime, the degeneration capacitor presents a high impedance and therefore behaves effectively as an open circuit. As a result, the source degeneration resistance remains unchanged, and the small-signal gain is limited by the full degeneration impedance. Since the degeneration element is purely resistive in this limit, no additional phase shift is introduced, and the output remains approximately in phase with the input.
 
@@ -340,3 +429,22 @@ At the same time, the decreasing capacitive reactance reduces the effective sour
 At higher frequencies, the capacitive reactance becomes much smaller than the degeneration resistance, and the capacitor effectively behaves as a short circuit. In this limit, the degeneration resistance is largely bypassed, and the source node becomes effectively AC-grounded. Consequently, the gate–source voltage of $M_2$ closely follows the input voltage with minimal attenuation or additional phase shift introduced by the degeneration network. The gain therefore approaches its maximum value, determined primarily by the intrinsic small-signal parameters of transistors $M_1$ through $M_4$, rather than by external degeneration. Since the degeneration impedance is now dominated by the capacitor’s near-zero reactance, its ability to introduce additional phase shift diminishes, and the phase response correspondingly returns toward its high-frequency asymptotic value.
 
 Overall, the observed frequency response arises from the progressive reduction of source degeneration and the introduction of reactive phase shift by the degeneration capacitor: at low frequencies the capacitor is ineffective and full degeneration limits the gain, at intermediate frequencies its decreasing reactance both increases the effective transconductance and introduces phase shift, and at high frequencies it effectively shorts the degeneration resistance, allowing the gain to approach its intrinsic maximum while the phase response stabilises.
+
+### Stability Analysis
+At low frequencies, the impedance of $C_{stray}$ is large, and its influence on the circuit is negligible. The loop gain therefore remains close to its DC value, which is less than unity, and any disturbances are attenuated on each pass around the loop.
+
+As the frequency increases, the impedance of $C_{stray}$ decreases, introducing additional poles and zeros into the loop transfer function. These frequency-dependent effects cause both the magnitude and phase of the loop gain to vary. @fig-beta-multiplier-open-loop-bode-plot shows that the loop gain eventually rises above unity, reaching approximately $6\,\text{dB}$, while the phase simultaneously approaches $0^\circ$. Under these conditions, the Barkhausen criterion for oscillation is satisfied, since both
+
+$$
+|A_{loop}(j\omega)| \ge 1
+\quad \text{and} \quad
+\angle A_{loop}(j\omega) = 0^\circ
+$$
+
+occur at approximately the same frequency. This indicates that disturbances at this frequency will neither decay nor attenuate, but instead be reinforced on each pass through the loop. As a result, the circuit is unstable and capable of sustaining oscillation.
+
+A more robust and widely used method for assessing stability is through the gain margin and phase margin. The gain margin is defined as the amount by which the loop gain is below unity at the frequency where the phase is $0^\circ$, while the phase margin is defined as the amount by which the phase is above $-180^\circ$ at the unity-gain frequency.
+
+For a stable system, both margins must be positive. In this case, since the loop gain is approximately $6\,\text{dB}$ when the phase approaches $0^\circ$, the gain margin is negative. A negative gain margin indicates that the feedback becomes effectively positive at that frequency, and the system is unstable.
+
+Therefore, the presence of stray capacitance across the reference resistor introduces frequency-dependent effects that can destabilize the feedback loop. This highlights the importance of considering parasitic elements during design, particularly in circuits employing positive feedback, where unintended capacitances can lead to oscillation even when the DC analysis predicts stable operation.
