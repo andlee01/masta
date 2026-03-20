@@ -733,7 +733,6 @@ class Circuit:
         elem_offset = 0
 
         for elem in range(self.num_edges):
-
             if self.is_non_sys_var_cap(elem) or self.is_non_sys_var_ind(elem):
                 elem_offset += 1
 
@@ -909,7 +908,8 @@ class Circuit:
             if self.is_sys_var_ind(elem):
 
                 # Get the Qf matrix column
-                qf_column = qf_A_ss[:,elem]
+                #qf_column = qf_A_ss[:,elem]
+                qf_column = self.qf[:,elem].copy()
 
                 # Determine the column of B to update (i.e. sys var index)
                 sys_var_ref = self.get_edge_info(elem).get_sys_var_ref()

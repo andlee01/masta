@@ -1,0 +1,35 @@
+---
+title: "Interactive Technical Document Example"
+author: "Your Name"
+date: today
+format:
+  html:
+    toc: true
+    code-fold: true
+    theme: flatly
+    html-math-method: mathjax
+    mathjax:
+      equation-numbering: all
+---
+
+# Introduction
+
+# Energy Build Up
+Energy accumulation in the circuit is driven by the external current source, which supplies energy to the reactive elements (L and C). As shown in @fig-lrc-startup-transient, the current source delivers energy in phase with the terminal voltage when operating at a frequency equal to the circuit’s resonant frequency.
+
+The net reactive current, defined as $i_{\text{diff}} = i_C + i_L$, illustrates the mechanism of energy gain. Consider an interval during which the capacitor voltage is positive and increasing. In the regions shaded green, the capacitor is charging due to energy supplied by both the inductor and the current source. Since $i_{\text{diff}} > 0$, the current flowing into the capacitor exceeds that supplied by the inductor alone. Consequently, at the end of the quarter cycle, the capacitor stores more energy than has been delivered by the inductor.
+
+Similarly, in the regions shaded red, the capacitor is discharging into the inductor. However, because $i_{\text{diff}} > 0$, the inductor receives more current than is provided by the capacitor alone. As a result, by the end of the quarter cycle, the inductor stores more energy than was initially supplied by the capacitor. A symmetric process occurs during the subsequent half-cycle when the capacitor voltage is negative.
+
+This net increase in stored energy continues until the circuit reaches a condition where the resistor current satisfies
+$$
+i_R = \frac{V_R}{R} = i_{\text{in}}.
+$$
+Since $i_R + i_L + i_C = i_{\text{in}}$, it follows that $i_L + i_C = 0$, and the input current is entirely carried by the resistor.
+
+At steady state, the inductor and capacitor exchange energy exclusively with each other, while the current source supplies only the resistive losses in the circuit.
+
+::: {#fig-lrc-startup-transient}
+<iframe src="/parallel_lrc/transient_cycle_parallel_lrc_m1_316044.2209511332.html" width="800" height="600" style="border:none;"></iframe>
+Start up transient of a parallel LRC circuit at resonant frequency.
+:::

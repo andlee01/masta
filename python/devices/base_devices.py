@@ -531,6 +531,51 @@ class current_src(TwoPortElement):
     def get_ddt(self, scb):
         return
 
+class sine_current_src(TwoPortElement):
+
+    def __init__(self, omega=1e6, mag=0.6, phi=0, bias=0):
+        TwoPortElement.__init__(self)
+
+        self.type = ElementType.current_src
+
+        self.omega    = omega
+        self.mag      = mag
+        self.phi      = phi
+        self.bias     = bias
+
+    def set_params(self, omega, mag, phi, bias):
+        self.omega    = omega
+        self.mag      = mag
+        self.phi      = phi
+        self.bias     = bias
+
+    def get_voltage(self, scb):
+        scb.v[self.ref] = scb.x[self.ref]
+
+    def get_current(self, scb):
+        scb.i[self.ref] = self.bias + (self.mag * math.sin(self.omega * scb.t + self.phi))
+
+    def get_dependent_current(self, scb):
+        return 0.0
+
+    def get_degen_current(self, scb):
+        return
+
+    def set_dependencies(self, ckt):
+        return
+
+    def get_weight(self):
+        return 3
+
+    def get_dy(self, x, sys):
+        return sys
+
+    def get_ddt(self, scb):
+        return
+
+    def get_time_series_input(self, tr):
+        return self.bias + (self.mag * np.sin(self.omega * tr + self.phi))
+
 class vccs_l1_mosfet(TwoPortElement):
 
     def set_params(self, KP, vth, l_lambda, L, W):
