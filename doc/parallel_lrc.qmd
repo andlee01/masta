@@ -14,6 +14,33 @@ format:
 
 # Introduction
 
+::: {#fig-beta-multiplier_large}
+![](parallel_lrc/parallel_lrc.svg){width=400}
+
+Parallel LRC circuit.
+:::
+
+# Tank Impedance
+
+The impedance of the tank is given by
+
+$$
+Z(j \omega) = \frac{V_{tank}(j \omega)}{i_{IN}(j \omega)}
+$$
+
+The Bode plot in @fig-lrc-impedance illustrates the frequency-dependent impedance of the parallel LRC tank. As observed, the impedance reaches a maximum at the resonant frequency. This occurs because, at resonance, the reactances of the inductor and capacitor are equal in magnitude and opposite in sign, resulting in their currents canceling one another. Consequently, there is no net reactive current drawn from the source, and the tank behaves as a purely resistive element.
+
+At this frequency, energy is exchanged between the inductor and capacitor, with the magnetic energy stored in the inductor and the electric energy stored in the capacitor oscillating back and forth. In the ideal lossless case, this exchange would continue indefinitely. However, in a practical circuit, the resistor dissipates energy, and thus the current supplied by the source at resonance is entirely used to compensate for these resistive losses. As a result, the impedance seen at the input is maximized and is determined solely by the parallel resistance.
+
+Away from resonance, the impedance decreases due to the increasing contribution of the reactive components. At frequencies below the resonant frequency, the inductive reactance is relatively small, causing the inductor to dominate the tank behaviour and provide a low-impedance path. Conversely, at frequencies above resonance, the capacitive reactance becomes small, and the capacitor dominates, again reducing the overall impedance.
+
+The phase response further reflects this behaviour. Below resonance, the circuit exhibits inductive characteristics, with current lagging the voltage. Above resonance, the behaviour becomes capacitive, with current leading the voltage. At resonance, the phase crosses zero, indicating purely resistive behaviour and no net reactive power exchange with the source.
+
+::: {#fig-lrc-impedance}
+<iframe src="/parallel_lrc/bode_parallel_lrc_m0.html" width="800" height="600" style="border:none;"></iframe>
+LRC Tank Impedance.
+:::
+
 # Energy Build Up
 Energy accumulation in the circuit is driven by the external current source, which supplies energy to the reactive elements (L and C). As shown in @fig-lrc-startup-transient, the current source delivers energy in phase with the terminal voltage when operating at a frequency equal to the circuit’s resonant frequency.
 

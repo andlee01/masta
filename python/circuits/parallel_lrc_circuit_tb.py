@@ -1071,7 +1071,7 @@ def run_rc_sweep(net, omega_values, base_path="."):
 
 def main():
 
-    fstep    = 10000
+    fstep    = 100000
     fstart   = 2 * math.pi * 1e3
     fstop    = 2 * math.pi * 100e6
     omega    = np.linspace(fstart, fstop, fstep)
@@ -1097,15 +1097,23 @@ def main():
                 net.ckt.D
             )
 
-    # Force SISO: output 0, input 0
+    # Force SISO: output 0, input 1
+    #  - Output 0 = Vc
+    #  - Input 1  = i_in
     sys_siso = sys[0, 1]
+
+
+    # Taking the transfer function of sys_siso gives:
+    # Z = Vc / i_in
+    #sys_impedance = sys[0, 0]
+    sys_Z = ct.ss2tf(sys_siso)
 
     # Poles and zeros
     poles = ct.pole(sys_siso)
     zeros = ct.zero(sys_siso)
 
     # Frequency response
-    mag, phase, omega_out = ct.freqresp(sys_siso, omega=omega)
+    mag, phase, omega_out = ct.freqresp(sys_Z, omega=omega)
 
     label = "parallel_lrc_m0"
 
@@ -1131,8 +1139,8 @@ def main():
 
     # Example 1: Explicit list
     omega_values = [
-        50.3e3*2*math.pi,
-        60.23e3
+        50.3e3 * (2*math.pi),
+        60.3e3 * (2*math.pi)
     ]
 
     results = run_rc_sweep(net, omega_values, base_path=output_dir)
