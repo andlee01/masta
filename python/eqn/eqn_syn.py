@@ -1,7 +1,7 @@
 from enum import Enum
 import sys, getopt, shutil, os, pprint, networkx as nx
 import numpy as np
-from sympy import *
+import sympy as sp
 
 from numpy.linalg import inv
 
@@ -629,55 +629,30 @@ class Circuit:
         non_numeric_list = regex.findall(r'\b(?<!\d)(?<![a-zA-Z_])[a-zA-Z_]+[a-zA-Z0-9_]*\b', input_string)
         return non_numeric_list
 
+    def _build_symbol_maps(self, x_syms, u_syms):
+        self._x_symbol_map = {sym: i for i, sym in enumerate(x_syms)}
+        self._u_symbol_map = {sym: i for i, sym in enumerate(u_syms)}
+
     def get_ss(self):
+        """
+        Compute state-space matrices (A, B, C, D) using symbolic solving.
+        Clean version: no string parsing, uses SymPy properly.
+        """
 
         A_ss, B_ss, C_ss = self.get_ss_A()
-        var_list, sys_var_list, inp_var_list = self.get_ss_sym_matrices()
+        _, x_syms, u_syms = self.get_ss_sym_matrices()
 
-        subs_map = {}
+        self._build_symbol_maps(x_syms, u_syms)
 
-        for elem in range(self.num_edges):
-            sym = self.elem_symbol(elem)
-            val = self.get_edge_info(elem).get_value()  # numeric value
-            subs_map[sym] = val
+        # Convert to SymPy matrices
+        A = sp.Matrix(A_ss)
+        B = sp.Matrix(B_ss)
+        C = sp.Matrix(C_ss)
 
-        # Promote to SymPy Matrices explicitly (safe)
-        A = Matrix(A_ss)
-        B = Matrix(B_ss)
-        C = Matrix(C_ss)
+        x = sp.Matrix(x_syms)
+        u = sp.Matrix(u_syms)
 
-        x = Matrix(sys_var_list)
-        u = Matrix(inp_var_list)
-
-        # -------------------------------
-        # Solve symbolically
-        # -------------------------------
-
-        # A.Vaux + B.x + C.u = 0
-        # => A.Vaux = -(B*x + C*u)
-
-        rhs = -(B*x + C*u)
-
-        # Symbolic LU solve (Gaussian elimination, no inverse)
-        Vaux_sym = A.LUsolve(rhs)
-
-        # -------------------------------
-        # Now substitute numeric values
-        # -------------------------------
-
-        subs_map = {}
-
-        for elem in range(self.num_edges):
-            sym = self.elem_symbol(elem)
-            val = self.get_edge_info(elem).get_value()
-            subs_map[sym] = val
-
-        # If x or u contain parameters that must be substituted:
-        Vaux = Vaux_sym.subs(subs_map)
-
-        # (Optional) force numeric evaluation
-        Vaux = Vaux.evalf()
-
+        # Solve: A * Vaux = -(B*x + C*u)
         # Vaux = vector of circuit variables
         #        For capacitors, the variable is ddt(V_C<n>)
         #        For inductors, the variable is ddt(i_L<n>)
@@ -697,7 +672,18 @@ class Circuit:
         # substitution to compute Vaux directly, which is the stable and correct way
         # to solve MNA-style circuit equations (as done in SPICE).
 
-        # Default state space system matrices
+        rhs = -(B * x + C * u)
+        Vaux_sym = A.LUsolve(rhs)
+
+        # Substitute numeric values
+        subs_map = {
+            self.elem_symbol(elem): self.get_edge_info(elem).get_value()
+            for elem in range(self.num_edges)
+        }
+
+        Vaux = Vaux_sym.subs(subs_map)
+
+        # Initialize state-space matrices
         self.A = np.zeros((self.num_sys_vars, self.num_sys_vars))
         self.B = np.zeros((self.num_sys_vars, self.num_inputs_lti))
 
@@ -708,94 +694,88 @@ class Circuit:
             self.C = np.eye(self.num_sys_vars)
             self.D = np.zeros((self.num_sys_vars, self.num_inputs_lti))
 
-        # Loop through resulting equations (Vaux = ...)
-        #  - Select the equations that correspond to a system variable (cap or ind)
-        #  - Format the equations into the matrices, e.g.
-        #
-        #    1000.0*u0 + 1000.001*x0 + 1000.0*x1 - 1000.001*x2 + 1.0*x3
-        #
-        #    is formatted into A[row] = [1000.001 1000.0 -1000.001 1.0]
-        #                      B[row] = [1000.0]
-        #
-        #    Assuming that the system has 4 state variables and 1 input
-
-        # Offset for non sys var capacitors or inductors
-        #  - Non sys var capacitors and inductors are removed from the system of equations
-        #  - Therefore, the element index of any later edges in the list needs corrected by the number
-        #    of non sys var edges before it
-        #
-        #  Before: Vs - 0                After: Vs - 0   elem_offset = 0
-        #          C1 - 1                       C1 - 1   elem_offset = 0
-        #          C2 - 2 non-sys               R2 - 2   elem_offset = 1
-        #          R2 - 3                       L1 - 3   elem_offset = 2
-        #          C3 - 4 non-sys
-        #          L1 - 5
+        # Track offset for removed non-system elements
         elem_offset = 0
 
         for elem in range(self.num_edges):
+
+            # Offset for non sys var capacitors or inductors
+            #  - Non sys var capacitors and inductors are removed from the system of equations
+            #  - Therefore, the element index of any later edges in the list needs corrected by the number
+            #    of non sys var edges before it
+            #
+            #  Before: Vs - 0                After: Vs - 0   elem_offset = 0
+            #          C1 - 1                       C1 - 1   elem_offset = 0
+            #          C2 - 2 non-sys               R2 - 2   elem_offset = 1
+            #          R2 - 3                       L1 - 3   elem_offset = 2
+            #          C3 - 4 non-sys
+            #          L1 - 5
             if self.is_non_sys_var_cap(elem) or self.is_non_sys_var_ind(elem):
                 elem_offset += 1
+                continue
 
-            elif self.is_sys_var_cap(elem) or self.is_sys_var_ind(elem):
+            expr_index = elem - elem_offset
 
-                elem_sel = elem - elem_offset
+            # 1000*(x0 + x1) - 2*u0 is expanded to
+            # 1000*x0 + 1000*x1 - 2*u0
+            expr = sp.expand(Vaux[expr_index])
 
-                # Determine the sys var index
+            # Handle state equations
+            if self.is_sys_var_cap(elem) or self.is_sys_var_ind(elem):
                 sys_var_ref = self.get_edge_info(elem).get_sys_var_ref()
+                self._fill_state_row(expr, sys_var_ref)
 
-                str_expr = str(Vaux[elem_sel])
-                str_expr = regex.sub(r"\s+", "", str_expr)
-
-                # Parse the symbolic equation string into 2 lists
-                # coeffs = [1000.0 1000.001 1000.0 -1000.001 1.0]
-                # vect   = [u0 x0 x1 x2 x3]
-                coeffs = self.extract_numeric_values(str_expr)
-                vect   = self.separate_numeric_non_numeric(str_expr)
-
-                # Parse the above lists and update the state space A and B matrices
-                self.parse_sym_list(coeffs, vect, sys_var_ref, state=True)
-
+            # Handle outputs
             if self.is_output_lti(elem):
+                output_ref = self.get_edge_info(elem).get_output_ref()
+                self._fill_output_row(expr, output_ref)
 
-                str_expr = str(Vaux[elem])
-                str_expr = regex.sub(r"\s+", "", str_expr)
 
-                output_ref  = self.get_edge_info(elem).get_output_ref()
+    def _fill_state_row(self, expr, row_idx):
+        """
+        Fill A and B matrices from a symbolic expression.
 
-                # Parse the symbolic equation string into 2 lists
-                # coeffs = [1000.0 1000.001 1000.0 -1000.001 1.0]
-                # vect   = [u0 x0 x1 x2 x3]
-                coeffs = self.extract_numeric_values(str_expr)
-                vect   = self.separate_numeric_non_numeric(str_expr)
+        expr = 1000000000.0*u1 - 31645.5696202532*x0 - 1000000000.0*x1
 
-                # Parse the above lists and update the state space A and B matrices
-                self.parse_sym_list(coeffs, vect, output_ref, state=False)
+        iterating over ordered items:
 
-    def parse_sym_list(self, coeffs, vect, sys_var_ref, state):
+        1000000000.00000 (coeff)
+        u1               (symbol)
 
-        for i in range(len(coeffs)):
+        -31645.5696202532
+        x0
 
-            # Seperate each vect element into matrix and element:
-            #  - x0  --> x, 0
-            #  - x12 --> x, 12
-            #  - u0  --> u, 0
+        -1000000000.00000
+        x1
 
-            # Get Matrix name (x or u)
-            mtrx = regex.findall(r'([a-zA-Z]+)', str(vect[i]))
+        self._x_symbol_map = {x0: 0, x1: 1}
+        self._u_symbol_map = {u0: 0, u1: 1}
+        """
+        for term in expr.as_ordered_terms():
+            coeff, symbol = term.as_coeff_Mul()
 
-            # Get Index
-            index = regex.findall(r'(\d+)', str(vect[i]))
+            if symbol in self._x_symbol_map:
+                col = self._x_symbol_map[symbol]
+                self.A[row_idx][col] = float(coeff)
 
-            if state:
-                if mtrx[0] == 'x':
-                    self.A[sys_var_ref][int(index[0])] = coeffs[i]
-                else:
-                    self.B[sys_var_ref][int(index[0])] = coeffs[i]
-            else:
-                if mtrx[0] == 'x':
-                    self.C[sys_var_ref][int(index[0])] = coeffs[i]
-                else:
-                    self.D[sys_var_ref][int(index[0])] = coeffs[i]
+            elif symbol in self._u_symbol_map:
+                col = self._u_symbol_map[symbol]
+                self.B[row_idx][col] = float(coeff)
+
+    def _fill_output_row(self, expr, row_idx):
+        """
+        Fill C and D matrices from a symbolic expression.
+        """
+        for term in expr.as_ordered_terms():
+            coeff, symbol = term.as_coeff_Mul()
+
+            if symbol in self._x_symbol_map:
+                col = self._x_symbol_map[symbol]
+                self.C[row_idx][col] = float(coeff)
+
+            elif symbol in self._u_symbol_map:
+                col = self._u_symbol_map[symbol]
+                self.D[row_idx][col] = float(coeff)
 
     def elem_symbol(self, elem):
         """
@@ -823,7 +803,7 @@ class Circuit:
         name = f"{prefix}{elem}"
 
         if name not in self.sym_vals:
-            self.sym_vals[name] = symbols(name, real=True, finite=True)
+            self.sym_vals[name] = sp.symbols(name, real=True, finite=True)
 
         return self.sym_vals[name]
 
@@ -837,14 +817,14 @@ class Circuit:
         # Element values can have large ranges. For example, resistors could be 10M and capacitor values
         # could be 20f. Values with such large differences in magnitude represent a problem for double precision
         # values. That is, they may lack the required precision to adequately represent the numbers, especially when added.
-        qf_A_ss = Matrix(qf_A_ss)   # integer topology only
-        bf_A_ss = Matrix(bf_A_ss)
-        B_ss    = zeros(self.num_edges, self.num_sys_vars)
+        qf_A_ss = sp.Matrix(qf_A_ss)   # integer topology only
+        bf_A_ss = sp.Matrix(bf_A_ss)
+        B_ss    = sp.zeros(self.num_edges, self.num_sys_vars)
 
-        non_sys = zeros(self.num_edges, self.num_edges)
+        non_sys = sp.zeros(self.num_edges, self.num_edges)
 
         # REVISIT (needs to be num_inputs)
-        C_ss    = zeros(self.num_edges, self.num_inputs_lti)
+        C_ss    = sp.zeros(self.num_edges, self.num_inputs_lti)
 
         for elem in range(self.num_edges):
 
@@ -1025,7 +1005,7 @@ class Circuit:
                 # Get the Bf matrix column
                 #bf_column = bf_A_ss[:,elem]
                 bf_column = self.bf[:,elem].copy()
-                bf_col = Matrix(bf_column).reshape(bf_column.shape[0], 1)
+                bf_col = sp.Matrix(bf_column).reshape(bf_column.shape[0], 1)
 
                 # Get the resistance
                 sym = self.elem_symbol(elem)
@@ -1044,7 +1024,7 @@ class Circuit:
                     # Get the Bf matrix column
                     #bf_column = bf_A_ss[:,elem]
                     bf_column = self.bf[:,elem].copy()
-                    bf_col = Matrix(bf_column).reshape(bf_column.shape[0], 1)
+                    bf_col = sp.Matrix(bf_column).reshape(bf_column.shape[0], 1)
 
                     # Get the input index
                     input_ref = self.get_edge_info(elem).get_input_ref()
@@ -1080,7 +1060,7 @@ class Circuit:
                     # Get the Qf matrix column
                     #qf_column = qf_A_ss[:,elem].copy()
                     qf_column = self.qf[:,elem].copy()
-                    qf_col = Matrix(qf_column).reshape(qf_column.shape[0], 1)
+                    qf_col = sp.Matrix(qf_column).reshape(qf_column.shape[0], 1)
 
                     # Get the input index
                     input_ref = self.get_edge_info(elem).get_input_ref()
@@ -1152,7 +1132,7 @@ class Circuit:
                     # Get the Qf matrix column
                     #  - Must use the original qf column here in case another dependent source has added its gm
                     qf_column = self.qf[:,elem].copy()
-                    qf_col = Matrix(qf_column).reshape(qf_column.shape[0], 1)
+                    qf_col = sp.Matrix(qf_column).reshape(qf_column.shape[0], 1)
 
                     # Get the Qf matrix column corresponding to the control voltage element
                     #  - This column may not be clear if other qf equations require the current through this element
@@ -1185,18 +1165,18 @@ class Circuit:
 
     def get_ss_sym_matrices(self):
         # Edge variables (v0, v1, ...)
-        v_syms = symbols(f"v0:{self.num_edges}", real=True)
+        v_syms = sp.symbols(f"v0:{self.num_edges}", real=True)
 
         # State variables (x0, x1, ...)
-        x_syms = symbols(f"x0:{self.num_sys_vars}", real=True)
+        x_syms = sp.symbols(f"x0:{self.num_sys_vars}", real=True)
 
         # Input variables (u0, u1, ...)
-        u_syms = symbols(f"u0:{self.num_inputs_lti}", real=True)
+        u_syms = sp.symbols(f"u0:{self.num_inputs_lti}", real=True)
 
         # Return as SymPy Matrices
-        var_list     = Matrix(v_syms)
-        sys_var_list = Matrix(x_syms)
-        inp_var_list = Matrix(u_syms)
+        var_list     = sp.Matrix(v_syms)
+        sys_var_list = sp.Matrix(x_syms)
+        inp_var_list = sp.Matrix(u_syms)
 
         return var_list, sys_var_list, inp_var_list
 
