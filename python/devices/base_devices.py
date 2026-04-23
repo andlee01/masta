@@ -205,6 +205,10 @@ class TwoPortElement(ABC):
         pass
 
     @abstractmethod
+    def get_dependent_voltage(self, scb):
+        pass
+
+    @abstractmethod
     def get_degen_current(self, scb):
         pass
 
@@ -232,6 +236,9 @@ class resistor(TwoPortElement):
         scb.i[self.ref] = scb.x[self.ref]
 
     def get_dependent_current(self, scb):
+        return 0.0
+
+    def get_dependent_voltage(self, scb):
         return 0.0
 
     def get_degen_current(self, scb):
@@ -281,6 +288,9 @@ class capacitor(TwoPortElement):
     def get_dependent_current(self, scb):
         return 0.0
 
+    def get_dependent_voltage(self, scb):
+        return 0.0
+
     def get_degen_current(self, scb):
 
         bf_loop = scb.degen_mtrx[self.ref,:].copy()
@@ -321,6 +331,9 @@ class inductor(TwoPortElement):
         scb.i[self.ref] = scb.sys[self.sys_var_ref]
 
     def get_dependent_current(self, scb):
+        return 0.0
+
+    def get_dependent_voltage(self, scb):
         return 0.0
 
     def get_degen_current(self, scb):
@@ -372,6 +385,9 @@ class voltage_src(TwoPortElement):
     def get_dependent_current(self, scb):
         return 0.0
 
+    def get_dependent_voltage(self, scb):
+        return 0.0
+
     def get_degen_current(self, scb):
         return
 
@@ -419,6 +435,9 @@ class sine_voltage_src(TwoPortElement):
         scb.i[self.ref] = scb.x[self.ref]
 
     def get_dependent_current(self, scb):
+        return 0.0
+
+    def get_dependent_voltage(self, scb):
         return 0.0
 
     def get_degen_current(self, scb):
@@ -482,6 +501,9 @@ class pulse_voltage_src(TwoPortElement):
     def get_dependent_current(self, scb):
         return 0.0
 
+    def get_dependent_voltage(self, scb):
+        return 0.0
+
     def get_degen_current(self, scb):
         return
 
@@ -514,6 +536,9 @@ class current_src(TwoPortElement):
         scb.i[self.ref] = self.value
 
     def get_dependent_current(self, scb):
+        return 0.0
+
+    def get_dependent_voltage(self, scb):
         return 0.0
 
     def get_degen_current(self, scb):
@@ -556,6 +581,9 @@ class sine_current_src(TwoPortElement):
         scb.i[self.ref] = self.bias + (self.mag * math.sin(self.omega * scb.t + self.phi))
 
     def get_dependent_current(self, scb):
+        return 0.0
+
+    def get_dependent_voltage(self, scb):
         return 0.0
 
     def get_degen_current(self, scb):
@@ -703,6 +731,9 @@ class vccs_l1_mosfet(TwoPortElement):
         #print (self.diode_id)
         #scb.i[self.i_d_ref] = sign * (scb.i[self.i_d_ref] + self.diode_id)
 
+    def get_dependent_voltage(self, scb):
+        return 0.0
+
     def get_region(self, x):
 
         self.vds = x[self.ref]
@@ -841,6 +872,9 @@ class vccs_l1_mosfet_small(TwoPortElement):
 
         scb.i[self.i_d_ref] = self.gm * self.vgs
 
+    def get_dependent_voltage(self, scb):
+        return 0.0
+
     def get_weight(self):
         return 3
 
@@ -877,3 +911,64 @@ class vccs_l1_mosfet_small(TwoPortElement):
 
     def get_value(self):
         return self.gm
+
+class vcvs_src(TwoPortElement):
+
+    def __init__(self, func=None):
+        TwoPortElement.__init__(self)
+
+        self.type = ElementType.voltage_src
+
+        # Store callback
+        self.func = func if func is not None else self.default_function
+
+    def default_function(self, scb):
+        return 0  # fallback behavior
+
+    def get_voltage(self, scb):
+        scb.v[self.i_x_ref] = scb.x[self.i_x_ref]
+
+    def get_current(self, scb):
+        scb.i[self.ref] = scb.x[self.ref]
+
+    def get_dependent_current(self, scb):
+        pass
+
+    def get_dependent_voltage(self, scb):
+        scb.v[self.i_d_ref] = self.func(scb)
+
+    def get_degen_current(self, scb):
+        return
+
+    def set_dependencies(self, ckt):
+        self.i_x_ref = ckt.num_edges
+        self.i_d_ref = ckt.num_edges + 1
+
+        # Add additional row/column to Qf, Bf and degen
+        ckt.qf = np.vstack([ckt.qf, np.zeros( ckt.qf.shape[0])])
+        ckt.qf = np.hstack((ckt.qf, np.zeros((ckt.qf.shape[0], 1))))
+        ckt.qf = np.vstack([ckt.qf, np.zeros( ckt.qf.shape[0])])
+        ckt.qf = np.hstack((ckt.qf, np.zeros((ckt.qf.shape[0], 1))))
+
+        ckt.bf = np.vstack([ckt.bf, np.zeros( ckt.bf.shape[0])])
+        ckt.bf = np.hstack((ckt.bf, np.zeros((ckt.bf.shape[0], 1))))
+        ckt.bf = np.vstack([ckt.bf, np.zeros( ckt.bf.shape[0])])
+        ckt.bf = np.hstack((ckt.bf, np.zeros((ckt.bf.shape[0], 1))))
+
+        ckt.bf[:, self.i_x_ref] = ckt.bf[:, self.ref]
+        ckt.bf[:, self.ref]     = np.zeros(ckt.bf.shape[0])
+
+        # Update Bf for degen
+        ckt.bf[ckt.num_edges][self.i_x_ref]  = 1
+        ckt.bf[ckt.num_edges][self.i_d_ref] = -1
+
+        ckt.num_edges += 2
+
+    def get_weight(self):
+        return 0
+
+    def get_dy(self, x, sys):
+        return sys
+
+    def get_ddt(self, scb):
+        pass

@@ -103,6 +103,13 @@ class Circuit:
 
         return self.scb.i
 
+    def get_vm_dep(self):
+        
+        for (u,v,d) in self.G.edges(data=True):
+            d['info'].get_dependent_voltage(self.scb)
+
+        return self.scb.v
+
     def get_degen(self):
 
         for (u,v,d) in self.G.edges(data=True):
@@ -114,12 +121,13 @@ class Circuit:
 
     def get_vm(self, x, sys, t):
 
-        self.scb.v = np.zeros(self.num_edges)
+        self.scb.v   = np.zeros(self.num_edges)
+        self.scb.x   = x
+        self.scb.sys = sys
+        self.scb.t   = t
 
         for (u,v,d) in self.G.edges(data=True):
             d['info'].get_voltage(self.scb)
-
-        self.get_ddt_vm()
 
         return self.scb.v
 
@@ -619,15 +627,6 @@ class Circuit:
                 return True
 
         return False
-
-    def extract_numeric_values(self, expression):
-        numeric_values = regex.findall(r'[-+]?\d+\.\d+', expression)
-        numeric_values = [float(value) for value in numeric_values]
-        return numeric_values
-
-    def separate_numeric_non_numeric(self, input_string):
-        non_numeric_list = regex.findall(r'\b(?<!\d)(?<![a-zA-Z_])[a-zA-Z_]+[a-zA-Z0-9_]*\b', input_string)
-        return non_numeric_list
 
     def _build_symbol_maps(self, x_syms, u_syms):
         self._x_symbol_map = {sym: i for i, sym in enumerate(x_syms)}
