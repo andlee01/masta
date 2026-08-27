@@ -1095,7 +1095,9 @@ def main():
             "f_stop": 25.0e6,
             "atten_db": 30.0,
             "ripple_db": 0.1,
-            "termination": "resistor"
+            "termination": {
+                "type": "resistor"
+            }
         },
 
         {
@@ -1106,7 +1108,9 @@ def main():
             "f_stop": 14.0e6,
             "atten_db": 30.0,
             "ripple_db": 0.1,
-            "termination": "resistor"
+            "termination": {
+                "type": "resistor"
+            }
         },
 
         {
@@ -1117,7 +1121,9 @@ def main():
             "f_stop": 50.0e6,
             "atten_db": 30.0,
             "ripple_db": 0.1,
-            "termination": "resistor"
+            "termination": {
+                "type": "resistor"
+            }
         },
 
         {
@@ -1128,21 +1134,26 @@ def main():
             "f_stop": 2.0e6,
             "atten_db": 20.0,
             "ripple_db": 0.1,
-            "termination": "resistor"
+            "termination": {
+                "type": "resistor"
+            }
         },
 
         {
             "id": "adc_4msps_if_1mhz",
             "Rs": 50.0,
             "Rl": 50.0,
-            "R_BIAS_TOP": 10e3,
-            "R_BIAS_BOT": 10e3,
-            "C_BIAS": 100e-9,
             "fc": 1.4e6,
             "f_stop": 2.0e6,
             "atten_db": 20.0,
             "ripple_db": 0.1,
-            "termination": "ac_rebias"
+            "termination": {
+                "type": "ac_rebias",
+                "C_BIAS": 100e-9,
+                "R_BIAS_TOP": 10e3,
+                "R_BIAS_BOT": 10e3,
+                "V_BIAS": 1.65
+            }
         },
     ]
 
@@ -1175,9 +1186,10 @@ def main():
             run_params = base_params.copy()
             run_params["topology"] = topo
 
-            termination_type = termination_map[
-                run_params.get("termination", "resistor")
-            ]
+            termination_cfg = run_params.get("termination", {"type": "resistor"})
+            termination_name = termination_cfg.get("type", "resistor")
+
+            termination_type = termination_map[termination_name]
 
             # 1. Initialize Network
             nw = chebyshev_lpf_ntwrk(
@@ -1201,11 +1213,12 @@ def main():
 
             # 4. Analysis
             # SISO: Out=V_load, In=V_antenna
-            termination_name = run_params.get("termination", "resistor")
-            if termination_name == "resistor":
-                sys_siso = sys[0, 1]
-            else:
-                sys_siso = sys[0, 2]               
+            out_index_map = {
+                "resistor": 1,
+                "ac_rebias": 2,
+            }
+
+            sys_siso = sys[0, out_index_map[termination_name]]              
 
             mag, phase, w_out = ct.freqresp(
                 sys_siso,
@@ -1215,8 +1228,6 @@ def main():
             # ====================================================
             # Output paths
             # ====================================================            
-            termination_name = run_params.get("termination", "resistor")
-            
             output_dir = (
                 Path("../../doc/chebyshev_lpf")
                 / base_params["id"]

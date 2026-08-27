@@ -130,5 +130,5 @@ class inverting_feedback_op_amp():
     def get_source_idx(self, source):
         return self.rc.get_source_idx(name=source)
     
-    def get_vout(self, x_sol):
+    def get_vout(self):
         return self.amp.get_vout(self.ckt.scb)

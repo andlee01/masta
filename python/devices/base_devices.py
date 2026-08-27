@@ -664,12 +664,37 @@ class vccs_l1_mosfet(TwoPortElement):
         else:
             self.diode_id = 0
 
+    def sigmoid(self, x, k=50.0):
+        return 1.0 / (1.0 + np.exp(-k * x))
+
+    def region_weights(self):
+        vgs = self.vgs
+        vds = self.vds
+
+        vov = vgs - self.vth          # overdrive
+        sat_boundary = vds - vov
+
+        k = 50.0  # smoothing sharpness
+
+        # turn-on (off → on)
+        w_on = self.sigmoid(vov, k)
+
+        # triode vs sat split
+        w_sat = self.sigmoid(sat_boundary, k) * w_on
+        w_tri = (1.0 - self.sigmoid(sat_boundary, k)) * w_on
+
+        # off weight
+        w_off = 1.0 - w_on
+
+        return w_tri, w_sat, w_off
+
     def sat(self):
 
         #if self.vds < 0 or self.vgs < 0:
         #    return 0
 
-        vdssat = self.vgs - self.vth
+        #vdssat = self.vgs - self.vth
+        vdssat = np.log(1 + np.exp(self.vgs - self.vth))  # softplus
 
         id = (self.KP / 2) * (self.W / self.L) * \
             (self.vgs - self.vth)**2 * (1 + self.l_lambda * (self.vds - vdssat))
@@ -695,41 +720,63 @@ class vccs_l1_mosfet(TwoPortElement):
     def get_current(self, scb):
         scb.i[self.i_x_ref] = scb.x[self.i_x_ref]
 
+    # def get_dependent_current(self, scb):
+
+    #     self.vds = scb.v[self.ref]
+    #     self.vgs = scb.v[self.vgs_ref]
+
+    #     sign = 1
+    #     #self.diode()
+    #     if self.vds < 0:
+    #         self.vgs = self.vgs - self.vds
+    #         #self.vgs = -1 * self.vgs
+    #         self.vds = -1 * self.vds
+    #         #self.vgs = self.vgs - self.vds
+    #         sign = -1
+
+    #     #self.vgs = np.abs(self.vgs)
+
+    #     #self.diode()
+
+    #     #if self.vds < 0:
+    #     #    sign = -1
+    #     #    #self.vgs, self.vds = self.vgs - self.vds, -self.vds  # Swap vgs and vds to model reverse conduction
+    #     #    self.vgs, self.vds = self.vgs, -self.vds  # Swap vgs and vds to model reverse conduction
+    #     #    self.print_stats()
+
+
+    #     if self.check_tri():
+    #         scb.i[self.i_d_ref] = self.tri()
+    #     elif self.check_sat():
+    #         scb.i[self.i_d_ref] = self.sat()
+    #     else:
+    #         scb.i[self.i_d_ref] = (1e-9 * self.vds)
+
+    #     scb.i[self.i_d_ref] = sign * scb.i[self.i_d_ref]
+    #     #print (self.diode_id)
+    #     #scb.i[self.i_d_ref] = sign * (scb.i[self.i_d_ref] + self.diode_id)
+
     def get_dependent_current(self, scb):
 
         self.vds = scb.v[self.ref]
         self.vgs = scb.v[self.vgs_ref]
 
+        # handle negative Vds symmetrically (keep your original idea)
         sign = 1
-        #self.diode()
         if self.vds < 0:
             self.vgs = self.vgs - self.vds
-            #self.vgs = -1 * self.vgs
-            self.vds = -1 * self.vds
-            #self.vgs = self.vgs - self.vds
+            self.vds = -self.vds
             sign = -1
 
-        #self.vgs = np.abs(self.vgs)
+        w_tri, w_sat, w_off = self.region_weights()
 
-        #self.diode()
+        ids_tri = self.tri()
+        ids_sat = self.sat()
+        ids_off = 1e-9 * self.vds
 
-        #if self.vds < 0:
-        #    sign = -1
-        #    #self.vgs, self.vds = self.vgs - self.vds, -self.vds  # Swap vgs and vds to model reverse conduction
-        #    self.vgs, self.vds = self.vgs, -self.vds  # Swap vgs and vds to model reverse conduction
-        #    self.print_stats()
+        ids = w_tri * ids_tri + w_sat * ids_sat + w_off * ids_off
 
-
-        if self.check_tri():
-            scb.i[self.i_d_ref] = self.tri()
-        elif self.check_sat():
-            scb.i[self.i_d_ref] = self.sat()
-        else:
-            scb.i[self.i_d_ref] = (1e-9 * self.vds)
-
-        scb.i[self.i_d_ref] = sign * scb.i[self.i_d_ref]
-        #print (self.diode_id)
-        #scb.i[self.i_d_ref] = sign * (scb.i[self.i_d_ref] + self.diode_id)
+        scb.i[self.i_d_ref] = sign * ids
 
     def get_dependent_voltage(self, scb):
         return 0.0

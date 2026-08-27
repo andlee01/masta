@@ -60,65 +60,6 @@ def op_solve(ckt, root_start):
         return op_solve(ckt, root.x)
     return root.x
 
-def op_solve_trial(ckt, root_start):
-    # Define physical bounds: no node can exceed Vsat or a reasonable margin
-    # Assuming vsat is 15, we might bound between -20 and 20
-    v_limit = 100e-6
-    lower_bounds = np.full_like(root_start, -v_limit)
-    upper_bounds = np.full_like(root_start, v_limit)
-
-    # Note: 'lm' and 'dogleg' don't support bounds, so we use 'hybr' or 'trf'
-    # 'least_squares' is often more robust for bounded circuit problems
-    res = optimize.least_squares(
-        circuit_eqn, 
-        root_start, 
-        args=(0, ckt, 0), 
-        bounds=(lower_bounds, upper_bounds),
-        xtol=1e-9
-    )
-    
-    if not res.success:
-        print(f"⚠️ Solver failed: {res.message}")
-        return root_start # Or handle retry logic
-        
-    return res.x
-
-# def dypc_litmus0(t, sys, ckt):
-
-#     root_start = np.ones(ckt.num_edges)
-#     vs = 1
-
-#     root = optimize.root(circuit_eqn, root_start, args=(sys, ckt, t), tol=1e-9, method='lm')
-#     root_start = root.x
-#     if not root.success:
-#         print (root.x)
-#         sys.exit(0)
-
-#     return ckt.get_dy(x=root.x)
-
-# def ode_solve(ckt, tend=50e-12, tstep=10000, x0=0):
-
-#     num_sys_vars    = ckt.get_num_sys_vars()
-
-#     t     = np.linspace(0, tend, tstep)
-
-#     r = ode(dypc_litmus0).set_integrator('lsoda', method='bdf', atol=1e-9, rtol=1e-9)
-#     r.set_initial_value(x0, 0.0)
-#     r.set_f_params(ckt)
-
-#     y    = np.empty((tstep, num_sys_vars))
-#     y[0] = x0
-
-#     k = 1
-#     while r.successful() and k < tstep:
-#         r.integrate(t[k])
-
-#         y[k] = r.y
-
-#         k += 1
-
-#     return t, y
-
 def format_engineering(value, unit="C"):
     """Formats a value into engineering notation with MathJax SI prefixes."""
     prefixes = {
@@ -161,8 +102,6 @@ def plot_tr(
         yr = yr.reshape(-1, 1)
 
     num_signals = yr.shape[1]
-    
-    print (labels)
 
     # Fallback for labels and types if not provided
     labels = labels or [f"Sig {i}" for i in range(num_signals)]
@@ -356,150 +295,6 @@ def plot_fft_plotly(mag, phase, omega, filename="fft_output.html", title="FFT An
     fig.write_html(filename, include_plotlyjs="cdn")
     print(f"✅ FFT Plot successfully saved to: {os.path.abspath(filename)}")
 
-def plot_bode_plotly(mag, phase, omega, *,
-                     single_out=True,
-                     output_idx=(0, 0),
-                     filename="bode_output.html"):
-    """
-    Plot magnitude and phase using Plotly and save to a standalone HTML file.
-
-    Parameters
-    ----------
-    mag : ndarray
-        Magnitude array from ct.freqresp
-    phase : ndarray
-        Phase array from ct.freqresp (radians)
-    omega : ndarray
-        Frequency vector (rad/s)
-    single_out : bool
-        True for SISO systems
-    output_idx : tuple
-        (output, input) index for MIMO systems
-    filename : str
-        Output HTML filename
-    """
-
-    if single_out:
-        mag_vec = mag
-        phase_vec = phase
-    else:
-        o, i = output_idx
-        mag_vec = mag[o][i]
-        phase_vec = phase[o][i]
-
-    mag_db = 20 * np.log10(mag_vec)
-    phase_deg = np.degrees(phase_vec)
-
-    fig = make_subplots(
-        rows=2, cols=1,
-        shared_xaxes=True,
-        vertical_spacing=0.08,
-        subplot_titles=("Magnitude (dB)", "Phase (deg)")
-    )
-
-    # Magnitude plot
-    fig.add_trace(
-        go.Scatter(
-            x=omega,
-            y=mag_db,
-            mode="lines",
-            name="Magnitude"
-        ),
-        row=1, col=1
-    )
-
-    # Phase plot
-    fig.add_trace(
-        go.Scatter(
-            x=omega,
-            y=phase_deg,
-            mode="lines",
-            name="Phase"
-        ),
-        row=2, col=1
-    )
-
-    fig.update_xaxes(
-        type="log",
-        title_text="Frequency (rad/s)",
-        row=1, col=1
-    )
-
-    fig.update_xaxes(
-        type="log",
-        title_text="Frequency (rad/s)",
-        row=2, col=1
-    )
-
-    fig.update_yaxes(
-        title_text="Magnitude (dB)",
-        row=1, col=1
-    )
-
-    fig.update_yaxes(
-        title_text="Phase (deg)",
-        row=2, col=1
-    )
-
-    fig.update_layout(
-        height=700,
-        width=900,
-        showlegend=False,
-        title_text=f"Bode Plot ({filename})"
-    )
-
-    fig.write_html(filename, include_plotlyjs="cdn")
-
-def plot_pz_plotly(sys, poles, zeros, filename="pz_plot.html"):
-
-    fig = go.Figure()
-
-    # Poles
-    fig.add_trace(go.Scatter(
-        x=np.real(poles),
-        y=np.imag(poles),
-        mode="markers",
-        marker=dict(symbol="x", size=10),
-        name="Poles"
-    ))
-
-    # Zeros
-    fig.add_trace(go.Scatter(
-        x=np.real(zeros),
-        y=np.imag(zeros),
-        mode="markers",
-        marker=dict(symbol="circle", size=10),
-        name="Zeros"
-    ))
-
-    # Axes
-    fig.add_shape(
-        type="line",
-        x0=min(np.real(poles.min()), -1),
-        x1=max(np.real(poles.max()), 1),
-        y0=0, y1=0,
-        line=dict(dash="dash", color="gray")
-    )
-
-    fig.add_shape(
-        type="line",
-        x0=0, x1=0,
-        y0=min(np.imag(poles.min()), -1),
-        y1=max(np.imag(poles.max()), 1),
-        line=dict(dash="dash", color="gray")
-    )
-
-    fig.update_layout(
-        title="Pole–Zero Map",
-        xaxis_title="Real Axis (σ)",
-        yaxis_title="Imaginary Axis (jω)",
-        width=700,
-        height=700,
-        showlegend=True
-    )
-
-    fig.write_html(filename, include_plotlyjs="cdn")
-
 NUM_CYCLES = 25
 DEFAULT_MAG = 350e-3
 
@@ -545,16 +340,11 @@ def run_rc_transient_manual(net, omega, num_cycles=NUM_CYCLES, mag=DEFAULT_MAG, 
         net.ckt.scb.v = V
         net.ckt.scb.i = I
 
-        #print (x_sol)
-
-        # print (inst_val)
-        # print (x_sol)
-
         # 4. Store the result and use it as the starting guess for the next step 
         # (This "warm start" helps the LM solver converge much faster)
         yr_list[i] = x_sol
         i_input[i] = inst_val
-        v_out[i]   = net.get_vout(x_sol)
+        v_out[i]   = net.get_vout()
         x_guess = x_sol
         
     # Convert list of results to a 2D numpy array
@@ -570,7 +360,7 @@ def run_rc_transient_manual(net, omega, num_cycles=NUM_CYCLES, mag=DEFAULT_MAG, 
 
     return tr, yr
 
-def plot_rc_results_1(net, tr, yr, omega, prefix="inverting_feedback_op_amp", base_path="."):
+def plot_rc_results(net, tr, yr, omega, prefix="inverting_feedback_op_amp", base_path="."):
     """
     Generate standard plots using dynamic labels from the circuit instances.
     """
@@ -604,35 +394,12 @@ def plot_rc_results_1(net, tr, yr, omega, prefix="inverting_feedback_op_amp", ba
             dynamic_labels.append(instance_name)
             quantity_types.append("current")
         
-        # We need to decide if the state variable is V or I.
-        # Usually, if it's a capacitor in the tree, it's V; if it's an inductor link, it's I.
-        # You can check the element type to format the LaTeX correctly:
-        #
-        # if net.ckt.is_co_tree_elem(idx):
-        #     dynamic_labels.append(f"$V_{{{instance_name}}}$")
-        #     quantity_types.append("voltage")
-        # else:
-        #     dynamic_labels.append(f"$i_{{{instance_name}}}$")
-        #     quantity_types.append("current")
-
-        # if elem.get_type() == ElementType.resistor:
-        #     dynamic_labels.append(f"$i_{{{instance_name}}}$")
-        #     quantity_types.append("current")
-        # if elem.get_type() == ElementType.voltage_src:
-        #     dynamic_labels.append(f"$i_{{{instance_name}}}$")
-        #     quantity_types.append("current")
-
     # 2. Handle the "appended" signals
     # Your run_rc_transient function appends: i_input, i_res, i_cap, i_diff
     # You may want to keep these hardcoded or map them as well:
     extra_labels = [r"$v_{IN}$", r"$v_{OUT}$"]
     all_labels = dynamic_labels + extra_labels
     all_quantities = quantity_types + ["voltage", "voltage"]
-
-    # 3. Define quantity types for the plotter
-    # This assumes yr[:, 0] is voltage and the rest are currents per your previous snippet
-    # Adjust the slice if your num_edges > 2
-    #quantity_types = ["voltage"] * 1 + ["current"] * (yr.shape[1] - 1)
 
     # 4. Bounds calculation
     v_bound = np.max(np.abs(yr[:, 0])) * 1.1 # Assuming index 0 is the voltage
@@ -649,7 +416,6 @@ def plot_rc_results_1(net, tr, yr, omega, prefix="inverting_feedback_op_amp", ba
         filename=str(transient_filename)
     )
 
-
 def run_rc_sweep(net, omega_values, base_path="."):
     """
     Run simulation for multiple omega values.
@@ -662,7 +428,7 @@ def run_rc_sweep(net, omega_values, base_path="."):
 
         tr, yr = run_rc_transient_manual(net, omega, mag=DEFAULT_MAG, tstep_per_cycle=100)
 
-        plot_rc_results_1(net, tr, yr, omega, base_path=base_path)
+        plot_rc_results(net, tr, yr, omega, base_path=base_path)
 
         # 1. Use -1 to grab the last column of yr
         # 2. Use os.path.join to combine base_path with the filename
@@ -804,284 +570,6 @@ def main():
         plot_transfer_curve(net, v_limit=v_limit, base_path=output_dir)
 
     print("All sweeps completed!")
-
-    exit(1)
-
-
-    vs_sweep = np.linspace(*SWEEP_RANGE)
-    m2_sweep = np.linspace(*M2_SWEEP_RANGE)
-    lrg_vs_sweep = np.linspace(*LRG_SWEEP_RANGE)
-    Rref_sweep = np.linspace(*RREF_SWEEP_RANGE)
-    params = {"Rref": DEFAULT_RREF, "Vs": DEFAULT_VS, "Cstray": 100e-12}
-
-    fstep    = 10000
-    fstart   = 2 * math.pi * 1e3
-    fstop    = 2 * math.pi * 100e6
-    omega    = np.linspace(fstart, fstop, fstep)
-
-    nw_m2             = beta_multiplier_ntwrk(output_resistance=True,  res_m2=True)
-    nw_m2_ss          = beta_multiplier_ntwrk(output_resistance=True,  res_m2=True)
-
-    nw_no_ro_m2       = beta_multiplier_ntwrk(output_resistance=False, res_m2=True)
-    nw_no_ro_m2_stray = beta_multiplier_ntwrk(output_resistance=True,  res_m2=True, stray_capacitance=True)
-    nw_m1             = beta_multiplier_ntwrk(output_resistance=True,  res_m2=False)
-    nw_no_ro_m1       = beta_multiplier_ntwrk(output_resistance=False, res_m2=False)
-
-    # Solve OPs and build small-signal circuits
-    # for net, label in [(nw_m2, "ro_m2"), (nw_no_ro_m2, "no_ro_m2"), (nw_m1, "ro_m1"), (nw_no_ro_m1, "no_ro_m1")]:
-
-    #     results = sweep(net, lrg_vs_sweep)
-    #     plot_sweep(lrg_vs_sweep, results, suffix=label)
-
-    # Solve OPs and build small-signal circuits
-    # for net, base_label in [(nw_m2, "ro_m2_sml")]:
-    #     for Rref in Rref_sweep:
-
-    #         # Update parameters (including Rref)
-    #         params_with_rref = dict(params)
-    #         params_with_rref["Rref"] = Rref
-    #         net.set_beta_multiplier_params(**params_with_rref)
-
-    #         # Solve operating point
-    #         root_start = np.zeros(net.ckt.num_edges)
-    #         x = op_solve(net.ckt, root_start)
-    #         op = net.ckt.scb
-
-    #         # Build small-signal circuit with loop break
-    #         net.add_sml_ckt(op=op, gate_topology=net.gate_break_m1_m2())
-
-    #         # Extract operating-point small-signal parameters
-    #         gm_m1, ro_m1 = net.beta_mult.nmos_m1.get_op_sml(op)
-    #         gm_m2, ro_m2 = net.beta_mult.nmos_m2.get_op_sml(op)
-    #         gm_m3, ro_m3 = net.beta_mult.pmos_m3.get_op_sml(op)
-    #         gm_m4, ro_m4 = net.beta_mult.pmos_m4.get_op_sml(op)
-
-    #         #print(f"\n[{cfg['label']}]")
-    #         print(f"m1 gm = {gm_m1:.6f}, ro = {ro_m1:.6f}")
-    #         print(f"m2 gm = {gm_m2:.6f}, ro = {ro_m2:.6f}")
-    #         print(f"m3 gm = {gm_m3:.6f}, ro = {ro_m3:.6f}")
-    #         print(f"m4 gm = {gm_m4:.6f}, ro = {ro_m4:.6f}")
-
-    #         # Run small-signal sweep
-    #         results = sml_sweep_m2(net, m2_sweep, Rref)
-
-    #         # Generate a unique label per Rref
-    #         label = f"{base_label}_Rref={Rref:g}"
-
-    #         plot_sweep(m2_sweep, results, suffix=label)
-
-    #Rref_sweep = np.linspace(6.5e3)
-
-    # Solve OPs and build SS small-signal circuits
-    for net, base_label in [(nw_m2_ss, "ro_m2_sml")]:
-
-        # -----------------------------
-        # Parameter setup (OP only once)
-        # -----------------------------
-        Rref = 6.5e3
-
-        params_with_rref = dict(params)
-        params_with_rref["Rref"] = Rref
-        net.set_beta_multiplier_params(**params_with_rref)
-
-        # Solve operating point
-        root_start = np.zeros(net.ckt.num_edges)
-        x = op_solve(net.ckt, root_start)
-        op = net.ckt.scb
-
-        # -----------------------------
-        # Gate-topology configurations
-        # -----------------------------
-        gate_configs = [
-            {
-                "label": "open_loop",
-                "gate_topology": net.gate_break_m1_m2()
-            },
-            {
-                "label": "closed_loop",
-                "gate_topology": net.gate_break_m1_m2_closed()
-            }
-        ]
-
-        # -----------------------------
-        # Small-signal analyses
-        # -----------------------------
-        for cfg in gate_configs:
-
-            label = f"{base_label}_{cfg['label']}"
-
-            # Build small-signal circuit
-            net.add_sml_ckt(
-                op=op,
-                lti=True,
-                gate_topology=cfg["gate_topology"],
-                degen_topology=net._capacitive_degen_topology(),
-                output_topology=net._output_vds_m2_topology()
-            )
-
-            # -----------------------------
-            # State-space construction
-            # -----------------------------
-            net.ckt_sml.get_ss()
-            sys = ct.ss(
-                net.ckt_sml.A,
-                net.ckt_sml.B,
-                net.ckt_sml.C,
-                net.ckt_sml.D
-            )
-
-            A = net.ckt_sml.A
-            B = net.ckt_sml.B[:, [0]]   # keep column shape (n,1)
-            C = net.ckt_sml.C[[0], :]   # keep row shape (1,n)
-            D = net.ckt_sml.D[[0], [0]] # shape (1,1)
-
-            # # Assume A, B, C, D are your matrices (n x n, n x 1, 1 x n, 1 x 1)
-            # omega_num = np.logspace(0, 8, 500)  # example: 1 Hz to 100 MHz
-            # H = np.zeros_like(omega, dtype=complex)
-
-            # for k, w in enumerate(omega_num):
-            #     # Solve (A + j*w*I) V = -B
-            #     # Use pseudo-inverse to avoid singularity issues
-            #     A_freq = A + 1j*w*np.eye(A.shape[0])
-            #     Vaux = - np.linalg.pinv(A_freq) @ B
-            #     # Output response
-            #     H[k] = C @ Vaux + D
-
-            # # Magnitude and phase
-            # mag_num = np.abs(H)
-            # phase_num = np.angle(H, deg=True)
-
-            # # Optional: convert magnitude to dB
-            # mag_dB_num = 20*np.log10(mag_num)
-
-            # # Example: print DC and high-frequency gain
-            # print("DC gain (linear):", mag_num[0])
-            # print("DC gain (dB):", mag_dB_num[0])
-            # print("HF gain (linear):", mag_num[-1])
-            # print("HF gain (dB):", mag_dB_num[-1])
-
-            sys_scypi = StateSpace(net.ckt_sml.A, net.ckt_sml.B, net.ckt_sml.C, net.ckt_sml.D)
-
-            w, H = freqresp(sys_scypi, omega)
-
-            mag_scypi = np.abs(H)
-            phase_scypi = np.angle(H, deg=True)
-
-            input_idx = net.get_source_idx("gate_m2")
-
-            # Force SISO: output 0, input 0
-            sys_siso = sys[0, input_idx]
-
-            # Poles and zeros
-            poles = ct.pole(sys_siso)
-            zeros = ct.zero(sys_siso)
-
-            # Frequency response
-            mag, phase, omega_out = ct.freqresp(sys_siso, omega=omega)
-
-            # -----------------------------
-            # Plotting
-            # -----------------------------
-            plot_bode_plotly(
-               mag,
-               phase,
-               omega_out,
-               single_out=True,
-               output_idx=(0, 0),
-              filename=f"bode_{label}.html"
-            )
-
-            # plot_bode_plotly(
-            #    mag_num,
-            #    phase_num,
-            #    omega_num,
-            #    single_out=True,
-            #    output_idx=(0, 0),
-            #   filename=f"bode_{label}_num.html"
-            # )
-
-            plot_pz_plotly(
-                sys_siso,
-                poles=poles,
-                zeros=zeros,
-                filename=f"pz_{label}.html"
-            )
-
-            plot_bode_plotly(
-                mag_scypi,
-                phase_scypi,
-                w,
-                single_out=True,
-                output_idx=(0, 0),
-                filename=f"bode_{label}_scipy.html"
-            )
-
-    exit(1)
-
-    # # Solve OPs and build small-signal circuits
-    # for net, label in [(nw_m2, "ro_m2_sml"), (nw_no_ro_m2, "no_ro_m2_sml"), (nw_m1, "ro_m1_sml"), (nw_no_ro_m1, "no_ro_m1_sml")]:
-    #     net.set_beta_multiplier_params(**params)
-    #     root_start = np.zeros(net.ckt.num_edges)
-    #     x = op_solve(net.ckt, root_start)
-    #     op = net.ckt.scb
-    #     net.add_sml_ckt(op=op)
-
-    #     results = sml_sweep(net, vs_sweep)
-    #     plot_sweep(vs_sweep, results, suffix=label)
-
-
-
-    # Stability analysis
-    for net, label in [(nw_m2, "ro_m2"), (nw_no_ro_m2, "no_ro_m2"), (nw_no_ro_m2_stray, "no_ro_m2_stray")]:
-        net.set_beta_multiplier_params(**params)
-        root_start = np.zeros(net.ckt.num_edges)
-        x = op_solve(net.ckt, root_start)
-        op = net.ckt.scb
-        net.add_sml_ckt(op=op)
-
-        iref = net.get_Rref_current(x)
-        #print (iref)
-
-        #eqs = net.ckt_sml.build_mathjax_equations()
-        #math_block = quarto_math_block(eqs)
-        #print(math_block)
-
-        print(f"iref = {iref:.6f}")
-
-        gm_m1, ro_m1 = net.beta_mult.nmos_m1.get_op_sml(op)
-        gm_m2, ro_m2 = net.beta_mult.nmos_m2.get_op_sml(op)
-        gm_m3, ro_m3 = net.beta_mult.pmos_m3.get_op_sml(op)
-        gm_m4, ro_m4 = net.beta_mult.pmos_m4.get_op_sml(op)
-
-        print(f"m1 gm = {gm_m1:.6f}, ro = {ro_m1:.6f}")
-        print(f"m2 gm = {gm_m2:.6f}, ro = {ro_m2:.6f}")
-        print(f"m3 gm = {gm_m3:.6f}, ro = {ro_m3:.6f}")
-        print(f"m4 gm = {gm_m4:.6f}, ro = {ro_m4:.6f}")
-
-    params = {"Rref": DEFAULT_RREF, "Vs": 0.05, "Cstray": 100e-12}
-    nw_no_ro_m2_stray.set_beta_multiplier_sml_params(**params)
-    x0    = np.zeros (nw_no_ro_m2_stray.ckt_sml.get_num_sys_vars())
-    tr, yr = ode_solve(nw_no_ro_m2_stray.ckt_sml, tend=500e-9, tstep=10000, x0=x0)
-    print (yr)
-    plot_tr(tr, yr, filename="plot_beta_dyn.html")
-
-    exit (1)
-    for net, label in [(nw_m2, "ro_m2"), (nw_no_ro_m2, "no_ro_m2"), (nw_no_ro_m2_stray, "no_ro_m2_stray")]:
-        net.set_beta_multiplier_params(**params)
-        root_start = np.zeros(net.ckt.num_edges)
-        #x = op_solve(net.ckt, root_start)
-        #op = net.ckt.scb
-        net.add_sml_ckt(op=root_start)
-
-        #iref = net.get_Rref_current(x)
-        #print (iref)
-
-        eqs = net.ckt_sml.build_mathjax_equations()
-        math_block = quarto_math_block(eqs)
-        print(math_block)
-
-
-
 
 if __name__ == "__main__":
     main()

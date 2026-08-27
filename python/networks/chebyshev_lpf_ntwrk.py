@@ -149,15 +149,15 @@ class chebyshev_lpf_ntwrk():
         self.rl.set_value(params["Rl"])
 
         self.c_bias.set_value(
-            params["C_BIAS"]
+            params["termination"]["C_BIAS"]
         )
 
         self.r_bias_top.set_value(
-            params["R_BIAS_TOP"]
+            params["termination"]["R_BIAS_TOP"]
         )
 
         self.r_bias_bot.set_value(
-            params["R_BIAS_BOT"]
+            params["termination"]["R_BIAS_BOT"]
         )
 
     def set_filter_params(self, **params):

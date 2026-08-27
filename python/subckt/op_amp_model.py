@@ -48,95 +48,24 @@ class op_amp_model(subckt):
     def linear_gain(self, scb):
         return self.gain * scb.i[self.RIN_idx] * self.RIN.get_value()
 
-    def nonlinear_gain_1(self, scb):
-            v_in = scb.i[self.RIN_idx] * self.RIN.get_value()
-            
-            # 1. Calculate the raw polynomial
-            v_linear = self.gain * v_in
-            v_quad   = self.a2 * (v_in ** 2)
-            v_cubic  = -1 * (self.gain * self.alpha3 * (v_in ** 3))
-            v_poly   = v_linear + v_quad + v_cubic
-
-            # 2. Find the "Turning Point" (Mathematical Peak)
-            # The derivative of (G*v - G*a3*v^3) is G - 3*G*a3*v^2.
-            # It hits zero at v = sqrt(1 / (3 * alpha3)).
-            v_peak = np.sqrt(1 / (3 * self.alpha3 + 1e-20)) 
-
-            # 3. If v_in passes the peak, force the output to stay at saturation
-            if v_in > v_peak:
-                v_poly = self.vsat
-            elif v_in < -v_peak:
-                v_poly = -self.vsat
-                
-            # 4. Final Clip
-            return np.clip(v_poly, -self.vsat, self.vsat)
-
-    def nonlinear_gain_2(self, scb):
-        """
-        3rd-Order Polynomial Non-Linear Amplifier Model
-        """
-        # 1. Calculate the raw input voltage (Vin = I * R)
+    def nonlinear_gain(self, scb):
         v_in = scb.i[self.RIN_idx] * self.RIN.get_value()
 
-        # 2. Linear Term (a1 * Vin)
-        linear_term = self.gain * v_in
-            
-        # 3. Second-Order Term (a2 * Vin^2)
-        # np.sign(v_in) preserves the direction if you want symmetric quadratic effects,
-        # but standard Taylor series just uses v_in**2 (which rectifies the signal).
-        second_order_term = self.a2 * (v_in ** 2)
-            
-        # 4. Third-Order Term (Gain Compression)
-        # We subtract the cubic term to model the amplifier "running out of steam"
-        third_order_term = -1 * (self.gain * self.alpha3 * (v_in ** 3))
+        # 1. Calculate the EXACT alpha3 required to make the curve peak at vsat
+        # This overrides self.alpha3 to guarantee mathematical continuity
+        alpha3_ideal = (4.0 * self.gain**2) / (27.0 * self.vsat**2)
 
-        # 5. Sum the polynomial terms
-        v_out_polynomial = linear_term + second_order_term + third_order_term
+        # 2. Find the input voltage where this ideal curve peaks
+        v_peak_in = np.sqrt(1.0 / (3.0 * alpha3_ideal))
 
-        # if v_in > 0 and v_out_polynomial < 0:
-        #     v_out_polynomial = self.vsat
+        # 3. Clip the input to prevent the mathematical fold-back
+        v_in_eff = np.clip(v_in, -v_peak_in, v_peak_in)
 
-        # if v_in < 0 and v_out_polynomial > 0:
-        #     v_out_polynomial = -1 * self.vsat            
+        # 4. Calculate the polynomial (it will now naturally peak at exactly vsat)
+        v_lin = self.gain * v_in_eff
+        v_cub = -1.0 * (self.gain * alpha3_ideal * (v_in_eff ** 3))
 
-        if v_in > 0:
-            v_out_polynomial = max(0, v_out_polynomial)
-        else:
-            v_out_polynomial = min(0, v_out_polynomial)
-
-        # 6. Apply Hard Saturation (Clamping)
-        # Assuming self.vsat is a positive value (e.g., 15.0)
-        v_out = np.clip(v_out_polynomial, -self.vsat, self.vsat)
-
-        # Soft Saturation: V_out = V_sat * tanh(V_poly / V_sat)
-        # This stays linear near 0 but rounds off smoothly to V_sat
-        #v_out = self.vsat * np.tanh(v_out_polynomial / self.vsat)
-
-        # print ("lllll")
-        # print (v_in)
-        # print (v_out)
-        # print ("kkkkk")
-
-        return v_out
-
-    def nonlinear_gain(self, scb):
-            v_in = scb.i[self.RIN_idx] * self.RIN.get_value()
-
-            # 1. Calculate the EXACT alpha3 required to make the curve peak at vsat
-            # This overrides self.alpha3 to guarantee mathematical continuity
-            alpha3_ideal = (4.0 * self.gain**2) / (27.0 * self.vsat**2)
-
-            # 2. Find the input voltage where this ideal curve peaks
-            v_peak_in = np.sqrt(1.0 / (3.0 * alpha3_ideal))
-
-            # 3. Clip the input to prevent the mathematical fold-back
-            v_in_eff = np.clip(v_in, -v_peak_in, v_peak_in)
-
-            # 4. Calculate the polynomial (it will now naturally peak at exactly vsat)
-            v_lin = self.gain * v_in_eff
-            v_cub = -1.0 * (self.gain * alpha3_ideal * (v_in_eff ** 3))
-
-            return v_lin + v_cub
+        return v_lin + v_cub
 
     def add(self, ckt, output_topology=None, gain_type="linear"):
 
