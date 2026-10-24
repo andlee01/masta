@@ -77,7 +77,8 @@ class pmos_subckt(subckt):
         isd.set_vgs_ref(vgs_ref=vsg_ref)
         isd.set_src_dep_ref(ref=vsg_ref)
 
-        [gm, ro] = isd.get_op_t(op=op, i_x_ref=self.isd.i_x_ref, vgs_ref=self.vsg_ref)
+        [gm, ro] = isd.get_op_t(op=op, i_x_ref=self.isd.i_x_ref,
+                               vgs_ref=self.vsg_ref, vds_ref=self.isd_ref)
 
         self.isd_sml = isd
 
@@ -87,6 +88,7 @@ class pmos_subckt(subckt):
         return isd_ref, vsg_ref
     
     def get_op_sml(self, op):
-        [gm, ro] = self.isd_sml.get_op_t(op=op, i_x_ref=self.isd.i_x_ref, vgs_ref=self.vsg_ref)
+        [gm, ro] = self.isd_sml.get_op_t(op=op, i_x_ref=self.isd.i_x_ref,
+                                        vgs_ref=self.vsg_ref, vds_ref=self.isd_ref)
 
         return gm, ro

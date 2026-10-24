@@ -33,39 +33,316 @@ TSTEP = 10000
 TOL = 1e-6
 M2_SWEEP_RANGE = (0, 1, 100)
 
+CURRENT_SCALE = 100e-6
+VOLTAGE_SCALE = 1.0
+CURRENT_ABSTOL = 1e-9
+VOLTAGE_ABSTOL = 1e-8
+
+
+class OperatingPointError(RuntimeError):
+    pass
+
 # ------------------------------------------------------------------------------
 # Core circuit equations
 # ------------------------------------------------------------------------------
 
 def circuit_eqn(x, sys, ckt, t):
     """Return Kirchhoff equations for given circuit state x."""
-    I = ckt.get_im(x=x, sys=sys, t=t)
+    ckt.get_im(x=x, sys=sys, t=t)
     V = ckt.get_vm(x=x, sys=sys, t=t)
     I = ckt.get_im_dep()
-    qf_num, bf_num = ckt.qf.copy(), ckt.bf.copy()
-    return np.dot(qf_num, I) + np.dot(bf_num, V)
+    return ckt.qf @ I + ckt.bf @ V
 
 
-def op_solve(ckt, root_start):
-    """Find DC operating point."""
-    root = optimize.root(circuit_eqn, root_start, args=(0, ckt, 0), tol=1e-9, method='lm')
-    if not root.success:
-        print("⚠️ OP solver did not converge, retrying with updated initial guess")
-        return op_solve(ckt, root.x)
-    return root.x
+def _equation_scales(ckt):
+    """Scale KCL rows as currents and KVL rows as voltages."""
+    voltage_rows = np.any(np.abs(ckt.bf) > 0.0, axis=1)
+    return np.where(voltage_rows, VOLTAGE_SCALE, CURRENT_SCALE)
 
-def dypc_litmus0(t, sys, ckt):
 
-    root_start = np.ones(ckt.num_edges)
-    vs = 1
+def _equation_tolerances(ckt):
+    voltage_rows = np.any(np.abs(ckt.bf) > 0.0, axis=1)
+    return np.where(voltage_rows, VOLTAGE_ABSTOL, CURRENT_ABSTOL)
 
-    root = optimize.root(circuit_eqn, root_start, args=(sys, ckt, t), tol=1e-9, method='lm')
-    root_start = root.x
-    if not root.success:
-        print (root.x)
-        sys.exit(0)
 
-    return ckt.get_dy(x=root.x)
+def _variable_scales(ckt):
+    scales = np.full(ckt.num_edges, CURRENT_SCALE)
+    # Original current-source edge variables are voltages.  Dependency
+    # variables appended during init_circuit are currents.
+    for ref in range(ckt.num_elems):
+        edge = ckt.get_edge_info(ref)
+        if edge is not None and edge.get_type() == ElementType.current_src:
+            scales[ref] = VOLTAGE_SCALE
+    return scales
+
+
+def _seeded_guess(ckt, guess, voltage_seed=1.0):
+    """Create a conducting seed without treating current unknowns as 1 A."""
+    seeded = np.asarray(guess, dtype=float).copy()
+    x_scale = _variable_scales(ckt)
+    current_vars = x_scale == CURRENT_SCALE
+    voltage_vars = ~current_vars
+    seeded[current_vars & (np.abs(seeded) < 1e-15)] = CURRENT_SCALE
+    seeded[current_vars & (np.abs(seeded) > 0.1)] = CURRENT_SCALE
+    seeded[voltage_vars & (np.abs(seeded) < 1e-15)] = voltage_seed
+    return seeded
+
+
+def circuit_jacobian(x, sys, ckt, t):
+    """Stamp the analytic Jacobian of the circuit residual.
+
+    This is the matrix form of the usual nonlinear-device companion model:
+    each MOSFET contributes its present gm and gds to the linearized circuit.
+    """
+    size = ckt.num_edges
+    dcurrent = np.zeros((size, size))
+    dvoltage = np.zeros((size, size))
+
+    # Populate the scoreboard voltages used by controlled devices.
+    ckt.get_im(x=x, sys=sys, t=t)
+    ckt.get_vm(x=x, sys=sys, t=t)
+
+    for _, _, data in ckt.G.edges(data=True):
+        edge = data["info"]
+        ref = edge.ref
+
+        if isinstance(edge, vccs_l1_mosfet):
+            vds = ckt.scb.v[ref]
+            vgs = ckt.scb.v[edge.vgs_ref]
+            _, gds, gm = edge.current_and_derivatives(vds, vgs)
+            dvoltage[ref, ref] = 1.0
+            dcurrent[edge.i_x_ref, edge.i_x_ref] = 1.0
+            dcurrent[ref, ref] = gds
+            dcurrent[ref, edge.vgs_ref] = gm
+        elif isinstance(edge, vccs_l1_mosfet_small):
+            dvoltage[ref, ref] = 1.0
+            dcurrent[edge.i_x_ref, edge.i_x_ref] = 1.0
+            dcurrent[ref, edge.vgs_ref] = edge.gm
+        elif isinstance(edge, resistor):
+            dcurrent[ref, ref] = 1.0
+            dvoltage[ref, ref] = edge.get_value()
+        elif edge.get_type() == ElementType.voltage_src:
+            dcurrent[ref, ref] = 1.0
+        elif edge.get_type() == ElementType.current_src:
+            dvoltage[ref, ref] = 1.0
+        elif edge.get_type() == ElementType.capacitor:
+            dcurrent[ref, ref] = 1.0
+        elif edge.get_type() == ElementType.inductor:
+            dvoltage[ref, ref] = 1.0
+        else:
+            raise NotImplementedError(
+                f"no analytic Jacobian stamp for {type(edge).__name__}"
+            )
+
+    return ckt.qf @ dcurrent + ckt.bf @ dvoltage
+
+
+def _damped_newton(ckt, guess, sys=0, t=0, max_iterations=40):
+    """Solve one companion-model/Newton sequence in scaled coordinates."""
+    x = np.asarray(guess, dtype=float).copy()
+    eq_scale = _equation_scales(ckt)
+    eq_tol = _equation_tolerances(ckt)
+    x_scale = _variable_scales(ckt)
+
+    for iteration in range(max_iterations):
+        residual = circuit_eqn(x, sys, ckt, t)
+        if (np.all(np.isfinite(residual)) and
+                np.max(np.abs(residual) / eq_tol) <= 1.0):
+            return x, True, iteration, "converged"
+
+        try:
+            jacobian = circuit_jacobian(x, sys, ckt, t)
+        except (NotImplementedError, AttributeError):
+            return x, False, iteration, "analytic stamp unavailable"
+
+        # Solve in normalized variables/equations to avoid mixing volts and
+        # microamps in the Newton linear system.
+        scaled_jacobian = ((jacobian / eq_scale[:, None]) *
+                           x_scale[None, :])
+        scaled_residual = residual / eq_scale
+        try:
+            delta_scaled = np.linalg.solve(scaled_jacobian, -scaled_residual)
+        except np.linalg.LinAlgError:
+            # The fundamental cut-set/loop formulation can retain redundant
+            # zero or dependent rows.  A rank-revealing least-norm linear
+            # solve is still a Newton step; unlike nonlinear least_squares it
+            # does not reevaluate the whole circuit to estimate a Jacobian.
+            delta_scaled, _, rank, _ = np.linalg.lstsq(
+                scaled_jacobian, -scaled_residual, rcond=None
+            )
+            if rank == 0:
+                return x, False, iteration, "singular companion matrix"
+
+        delta = delta_scaled * x_scale
+        if not np.all(np.isfinite(delta)):
+            return x, False, iteration, "non-finite Newton step"
+
+        # Device voltage limiting and current limiting prevent a poor seed
+        # from crossing several operating regions in one iteration.
+        voltage_vars = x_scale == VOLTAGE_SCALE
+        delta[voltage_vars] = np.clip(delta[voltage_vars], -0.5, 0.5)
+        delta[~voltage_vars] = np.clip(
+            delta[~voltage_vars], -5 * CURRENT_SCALE, 5 * CURRENT_SCALE
+        )
+
+        old_norm = np.linalg.norm(scaled_residual, ord=np.inf)
+        alpha = 1.0
+        accepted = False
+        while alpha >= 2.0**-12:
+            trial = x + alpha * delta
+            trial_residual = circuit_eqn(trial, sys, ckt, t)
+            trial_norm = np.linalg.norm(trial_residual / eq_scale, ord=np.inf)
+            if np.isfinite(trial_norm) and trial_norm < old_norm:
+                x = trial
+                accepted = True
+                break
+            alpha *= 0.5
+        if not accepted:
+            return x, False, iteration, "line search stalled"
+
+    return x, False, max_iterations, "iteration limit"
+
+
+def op_solve(ckt, root_start, branch_ref=None, min_branch_current=1e-9,
+             max_nfev=3000):
+    """Find and validate a scaled DC operating point.
+
+    If ``branch_ref`` is supplied, both the caller's guess and a conducting
+    seed are tried and the finite-current branch is selected explicitly.
+    """
+    root_start = np.asarray(root_start, dtype=float)
+    if root_start.shape != (ckt.num_edges,):
+        raise ValueError(f"expected {ckt.num_edges} initial values, got {root_start.shape}")
+
+    eq_scale = _equation_scales(ckt)
+    eq_tol = _equation_tolerances(ckt)
+    x_scale = _variable_scales(ckt)
+
+    def scaled_residual(x):
+        residual = circuit_eqn(x, 0, ckt, 0)
+        if not np.all(np.isfinite(residual)):
+            return np.full_like(residual, 1e30)
+        return residual / eq_scale
+
+    guesses = [root_start]
+    if branch_ref is not None:
+        # The all-off solution has a wide basin of attraction.  Try modest
+        # and strongly conducting voltage seeds, then select a validated
+        # finite-current solution rather than trusting one arbitrary seed.
+        for voltage_seed in (0.5, 1.0, 5.0):
+            seeded = _seeded_guess(ckt, np.zeros_like(root_start), voltage_seed)
+            if not any(np.array_equal(seeded, old) for old in guesses):
+                guesses.append(seeded)
+
+        # With ideal output resistance (lambda == 0), the conducting and
+        # all-off branches can have nearly disjoint attraction basins.  Use a
+        # temporary finite-gds companion model to obtain a nearby conducting
+        # seed, then restore the requested ideal devices before the real solve.
+        ideal_mosfets = []
+        for _, _, data in ckt.G.edges(data=True):
+            edge = data["info"]
+            if isinstance(edge, vccs_l1_mosfet) and edge.l_lambda == 0.0:
+                ideal_mosfets.append(edge)
+        branch_guess = abs(root_start[branch_ref])
+        cold_or_unphysical = (
+            branch_guess < min_branch_current or
+            branch_guess > 10.0 * CURRENT_SCALE
+        )
+        if ideal_mosfets and cold_or_unphysical:
+            for edge in ideal_mosfets:
+                edge.l_lambda = 0.01
+            try:
+                homotopy_start = _seeded_guess(
+                    ckt, np.zeros_like(root_start), voltage_seed=0.1
+                )
+                homotopy_x, homotopy_ok, _, _ = _damped_newton(
+                    ckt, homotopy_start
+                )
+            finally:
+                for edge in ideal_mosfets:
+                    edge.l_lambda = 0.0
+            if (homotopy_ok and
+                    abs(homotopy_x[branch_ref]) >= min_branch_current):
+                guesses.insert(0, homotopy_x)
+
+    diagnostics = []
+    for guess in guesses:
+        newton_x, newton_ok, iterations, newton_message = _damped_newton(
+            ckt, guess
+        )
+        newton_residual = circuit_eqn(newton_x, 0, ckt, 0)
+        newton_error = np.max(np.abs(newton_residual) / eq_tol)
+        newton_branch_ok = (branch_ref is None or
+                            abs(newton_x[branch_ref]) >= min_branch_current)
+        diagnostics.append(("newton: " + newton_message, newton_error,
+                            newton_x[branch_ref] if branch_ref is not None else None,
+                            iterations))
+        if newton_ok and newton_branch_ok:
+            circuit_eqn(newton_x, 0, ckt, 0)
+            return newton_x
+
+        # Retain nonlinear least squares as a robust fallback for unsupported
+        # elements, singular companion matrices, or unusually poor seeds.
+        result = optimize.least_squares(
+            scaled_residual,
+            newton_x,
+            x_scale=x_scale,
+            jac="3-point",
+            ftol=1e-12,
+            xtol=1e-12,
+            gtol=1e-12,
+            max_nfev=max_nfev,
+        )
+        residual = circuit_eqn(result.x, 0, ckt, 0)
+        normalized_error = np.max(np.abs(residual) / eq_tol)
+        valid = (result.success and np.all(np.isfinite(result.x)) and
+                 np.all(np.isfinite(residual)) and normalized_error <= 1.0)
+        branch_ok = (branch_ref is None or
+                     abs(result.x[branch_ref]) >= min_branch_current)
+        diagnostics.append(("least_squares: " + result.message, normalized_error,
+                            result.x[branch_ref] if branch_ref is not None else None,
+                            result.nfev))
+        if valid and branch_ok:
+            circuit_eqn(result.x, 0, ckt, 0)
+            return result.x
+
+    raise OperatingPointError(
+        "operating-point solve failed residual/branch validation: " +
+        repr(diagnostics)
+    )
+
+def dypc_litmus0(t, state, ckt, algebraic_state):
+    """ODE callback with a persistent warm start for the algebraic solve."""
+    eq_scale = _equation_scales(ckt)
+    eq_tol = _equation_tolerances(ckt)
+    x_scale = _variable_scales(ckt)
+
+    solution, converged, _, message = _damped_newton(
+        ckt, algebraic_state["x"], sys=state, t=t, max_iterations=20
+    )
+    if not converged:
+        result = optimize.least_squares(
+            lambda x: circuit_eqn(x, state, ckt, t) / eq_scale,
+            solution,
+            x_scale=x_scale,
+            jac="3-point",
+            ftol=1e-10,
+            xtol=1e-10,
+            gtol=1e-10,
+            max_nfev=1000,
+        )
+        solution = result.x
+        message = result.message
+        converged = result.success
+
+    residual = circuit_eqn(solution, state, ckt, t)
+    if (not converged or not np.all(np.isfinite(solution)) or
+            np.max(np.abs(residual) / eq_tol) > 1.0):
+        raise OperatingPointError(
+            f"transient algebraic solve failed at t={t:g}: {message}"
+        )
+    algebraic_state["x"] = solution.copy()
+    return ckt.get_dy(x=solution)
 
 def ode_solve(ckt, tend=50e-12, tstep=10000, x0=0):
 
@@ -73,9 +350,12 @@ def ode_solve(ckt, tend=50e-12, tstep=10000, x0=0):
 
     t     = np.linspace(0, tend, tstep)
 
+    algebraic_state = {
+        "x": _seeded_guess(ckt, np.zeros(ckt.num_edges), voltage_seed=0.5)
+    }
     r = ode(dypc_litmus0).set_integrator('lsoda', method='bdf', atol=1e-9, rtol=1e-9)
     r.set_initial_value(x0, 0.0)
-    r.set_f_params(ckt)
+    r.set_f_params(ckt, algebraic_state)
 
     y    = np.empty((tstep, num_sys_vars))
     y[0] = x0
@@ -94,7 +374,7 @@ def ode_solve(ckt, tend=50e-12, tstep=10000, x0=0):
 # Large-signal analysis
 # ------------------------------------------------------------------------------
 
-def sweep(nw, vs_sweep):
+def sweep(nw, vs_sweep, root_start=None):
     """Perform small-signal sweep of beta-multiplier network."""
     N = len(vs_sweep)
 
@@ -109,13 +389,18 @@ def sweep(nw, vs_sweep):
     vgs_m2_sweep = np.zeros(N)
     irref_sweep  = np.zeros(N)
 
-    root_start = np.ones(nw.ckt.num_edges)
+    if root_start is None:
+        root_start = np.ones(nw.ckt.num_edges)
+    else:
+        root_start = np.asarray(root_start, dtype=float).copy()
 
     for vs_idx, vs in enumerate(vs_sweep):
         params = {"Rref": 6.5e3, "Vs": vs}
         nw.set_beta_multiplier_params(**params)
 
-        x = op_solve(nw.ckt, root_start)
+        x = op_solve(nw.ckt, root_start, branch_ref=nw.get_rref_idx())
+        if vs_idx == 0:
+            nw._sweep_first_solution = x.copy()
         root_start = x.copy()
 
         irref_sweep[vs_idx] = nw.get_Rref_current(x)
@@ -162,12 +447,13 @@ def sml_sweep(nw, vs_sml_sweep):
     vgs_m2_sml_sweep = np.zeros(N)
     irref_sml_sweep  = np.zeros(N)
 
+    root_start = np.zeros(nw.ckt_sml.num_edges)
     for vs_idx, vs in enumerate(vs_sml_sweep):
         params = {"Rref": 6.5e3, "Vs": vs}
         nw.set_beta_multiplier_sml_params(**params)
 
-        root_start = np.ones(nw.ckt_sml.num_edges)
         x = op_solve(nw.ckt_sml, root_start)
+        root_start = x.copy()
 
         irref_sml_sweep[vs_idx] = nw.get_Rref_sml_current(x)
 
@@ -209,14 +495,15 @@ def sml_sweep_m2(nw, vs_sml_sweep):
     vgs_m2_sml_sweep = np.zeros(N)
     irref_sml_sweep  = np.zeros(N)
 
+    root_start = np.zeros(nw.ckt_sml.num_edges)
     for vs_idx, vs in enumerate(vs_sml_sweep):
         nw.set_source(source="gate_m2", val=vs)
         params = {"Rref": DEFAULT_RREF, "Vs": 0}
         nw.set_beta_multiplier_sml_params(**params)
         nw.set_source("gate_m2", vs)
 
-        root_start = np.ones(nw.ckt_sml.num_edges)
         x = op_solve(nw.ckt_sml, root_start)
+        root_start = x.copy()
 
         irref_sml_sweep[vs_idx] = nw.get_Rref_sml_current(x)
 
@@ -589,7 +876,7 @@ def plot_pz_plotly(sys, poles, zeros, output_dir, filename="pz_plot.html"):
 
 
 def quarto_math_block(equations):
-    """
+    r"""
     Convert an array of equation strings into a Quarto-ready MathJax aligned block.
 
     Example output:
@@ -627,7 +914,9 @@ def quarto_math_block(equations):
 
 def main():
     # Define output directory once and ensure it exists
-    output_dir = Path("../../doc/beta_multiplier")
+    output_dir = Path(os.environ.get(
+        "BETA_MULTIPLIER_OUTPUT_DIR", "../../doc/beta_multiplier"
+    ))
     output_dir.mkdir(parents=True, exist_ok=True)
 
     vs_sweep = np.linspace(*SWEEP_RANGE)
@@ -654,8 +943,19 @@ def main():
     print(math_block)
 
     # Solve OPs and build small-signal circuits
-    for net, label in [(nw_m2, "ro_m2"), (nw_no_ro_m2, "no_ro_m2"), (nw_m1, "ro_m1"), (nw_no_ro_m1, "no_ro_m1")]:
-        results = sweep(net, lrg_vs_sweep)
+    sweep_cases = [
+        (nw_m2, "ro_m2", None),
+        (nw_no_ro_m2, "no_ro_m2", None),
+        # Moving the degeneration resistor creates another separated solution
+        # basin.  Continue from the corresponding M2 topology at the same
+        # first supply point instead of restarting from an artificial vector.
+        (nw_m1, "ro_m1", nw_m2),
+        (nw_no_ro_m1, "no_ro_m1", nw_no_ro_m2),
+    ]
+    for net, label, topology_seed in sweep_cases:
+        initial = (None if topology_seed is None else
+                   topology_seed._sweep_first_solution)
+        results = sweep(net, lrg_vs_sweep, root_start=initial)
         # Pass output_dir directly
         #plot_sweep(lrg_vs_sweep, results, output_dir, suffix=label)
 
@@ -694,7 +994,7 @@ def main():
 
         # Solve operating point
         root_start = np.zeros(net.ckt.num_edges)
-        x = op_solve(net.ckt, root_start)
+        x = op_solve(net.ckt, root_start, branch_ref=net.get_rref_idx())
         op = net.ckt.scb
 
         # Build small-signal circuit with loop break
@@ -760,7 +1060,7 @@ def main():
 
         # Solve operating point
         root_start = np.zeros(net.ckt.num_edges)
-        x = op_solve(net.ckt, root_start)
+        x = op_solve(net.ckt, root_start, branch_ref=net.get_rref_idx())
         op = net.ckt.scb
 
         # -----------------------------

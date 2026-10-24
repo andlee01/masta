@@ -46,11 +46,8 @@ class TwoPortElement(ABC):
         # This variable corresponds to the edge voltage.
         # The edge current is a function of time only.
         #
-        # A dependent current source adds 3 variables into the system equations.
-        # The first variable is the edge voltage.
-        # The second variable is the edge current.
-        # The third variable is the edge current constraint and is calculated from
-        # the guess edge voltages and currents.
+        # A dependent current source has its normal edge-voltage unknown and
+        # adds one branch-current unknown plus one constitutive equation.
         #
         # The solver flow is as follows:
         # 1. Each edge calculates its current using the current value of x and sys
@@ -58,7 +55,7 @@ class TwoPortElement(ABC):
         #
         #      - An independent current source calculates its current based on t
         #        and updates I[ref].
-        #      - A dependent current source updates I[i_d_ref] = x[i_d_ref].
+        #      - A dependent current source updates I[i_x_ref] = x[i_x_ref].
         #
         # 2. Each edge calculates its voltage using the current value of x and sys
         #    only.
@@ -69,25 +66,21 @@ class TwoPortElement(ABC):
         #    the I and V vector from steps 1. and 2. only.
         #
         #      - Dependent current sources calculate the dependent current using V and I
-        #        and updates I[i_x_ref] = f(V, I)
+        #        and updates I[ref] = f(V, I).
         #
         # 4. For every dependent source an equation is inserted that into the system of equations
-        #    that asserts that I[i_d_ref] = I[i_x_ref]. This constrains the guessed value of a
+        #    that asserts that I[i_x_ref] = I[ref]. This constrains the guessed value of a
         #    dependent current source to be equal to the true, dependent value.
         #
         # By following the above steps, potential problems of circular dependency are avoided.
         # For example, if I2 = f(V1) and V1 = f(I1) then I2 cannot calculate its value until V1 is
         # known, but V1 cannot calculate its value intil I1 is known. The additional, inserted
-        # variables break this loop.
+        # variable and equation break this loop.
 
-        # Dependent variable reference
-        #  - Guessed current for a dependent current source or voltage for a
-        #    dependent voltage source
+        # Legacy dependent-value reference used by dependent voltage sources.
         self.i_d_ref     = -1
 
-        # An additional constraint variable that's inserted alongside i_d_ref
-        #  - Calculates the dependent true value based on the guessed voltages
-        #    and currents
+        # Guessed branch-current reference for a dependent current source.
         self.i_x_ref     = -1
 
         # For LTI Circuits only
@@ -617,6 +610,13 @@ class vccs_l1_mosfet(TwoPortElement):
         self.diode_is        = 1e-14
         self.vt_diode        = 0.026
 
+        # Smoothing is deliberately expressed in volts.  A continuously
+        # differentiable device law is much easier for Newton-like circuit
+        # solvers to handle than hard region changes.
+        self.vov_smoothing   = 25e-3
+        self.vds_smoothing   = 1e-3
+        self.gmin            = 1e-12
+
     def set_vgs_ref(self, vgs_ref):
         self.vgs_ref = vgs_ref
 
@@ -664,8 +664,19 @@ class vccs_l1_mosfet(TwoPortElement):
         else:
             self.diode_id = 0
 
+    @staticmethod
+    def _softplus(x, width):
+        """Overflow-safe approximation of max(x, 0)."""
+        return width * np.logaddexp(0.0, x / width)
+
+    @staticmethod
+    def _smooth_positive(x, width):
+        return 0.5 * (x + np.sqrt(x * x + width * width))
+
     def sigmoid(self, x, k=50.0):
-        return 1.0 / (1.0 + np.exp(-k * x))
+        # Equivalent to scipy.special.expit without another dependency here.
+        z = np.clip(k * x, -60.0, 60.0)
+        return 1.0 / (1.0 + np.exp(-z))
 
     def region_weights(self):
         vgs = self.vgs
@@ -711,6 +722,67 @@ class vccs_l1_mosfet(TwoPortElement):
 
         return id
 
+    def _forward_current_and_derivatives(self, vds, vgs):
+        """Smooth Level-1-like current for non-negative drain voltage.
+
+        tanh limits the effective channel voltage to the overdrive, producing
+        one differentiable expression for linear and saturation operation.
+        """
+        beta = self.KP * (self.W / self.L)
+        threshold_arg = (vgs - self.vth) / self.vov_smoothing
+        vov = self._softplus(vgs - self.vth, self.vov_smoothing)
+        dvov_dvgs = self.sigmoid(threshold_arg, k=1.0)
+        vds_pos = self._smooth_positive(vds, self.vds_smoothing)
+        root = np.sqrt(vds * vds + self.vds_smoothing**2)
+        dvds_pos_dvds = 0.5 * (1.0 + vds / root)
+        # At extreme trial voltages softplus can underflow to zero.  tanh is
+        # already fully saturated beyond this range, so clipping preserves the
+        # device law while avoiding inf*0 in its derivative.
+        ratio = np.clip(vds_pos / max(vov, 1e-15), 0.0, 40.0)
+        tanh_ratio = np.tanh(ratio)
+        sech2_ratio = 1.0 - tanh_ratio * tanh_ratio
+        vds_eff = vov * tanh_ratio
+        dveff_dvds_pos = sech2_ratio
+        dveff_dvov = tanh_ratio - ratio * sech2_ratio
+        channel = beta * (vov * vds_eff - 0.5 * vds_eff * vds_eff)
+        modulation = 1.0 + self.l_lambda * vds_pos
+        current = channel * modulation
+
+        dchannel_dvov = beta * (
+            vds_eff + (vov - vds_eff) * dveff_dvov
+        )
+        dchannel_dvds_pos = beta * (
+            (vov - vds_eff) * dveff_dvds_pos
+        )
+        dcurrent_dvgs = dchannel_dvov * modulation * dvov_dvgs
+        dcurrent_dvds = (
+            dchannel_dvds_pos * modulation + channel * self.l_lambda
+        ) * dvds_pos_dvds
+        return current, dcurrent_dvds, dcurrent_dvgs
+
+    def _forward_current(self, vds, vgs):
+        return self._forward_current_and_derivatives(vds, vgs)[0]
+
+    def current_and_derivatives(self, vds, vgs):
+        """Return Ids, gds and gm from one analytic device evaluation."""
+        forward, forward_gds, forward_gm = \
+            self._forward_current_and_derivatives(vds, vgs)
+        reverse, reverse_gds, reverse_gm = \
+            self._forward_current_and_derivatives(-vds, vgs - vds)
+        ids = forward - reverse + self.gmin * vds
+        gds = forward_gds + reverse_gds + reverse_gm + self.gmin
+        gm = forward_gm - reverse_gm
+        return ids, gds, gm
+
+    def drain_current(self, vds, vgs):
+        """Source/drain-symmetric, continuously differentiable drain current."""
+        return self.current_and_derivatives(vds, vgs)[0]
+
+    def small_signal_params(self, vds, vgs):
+        """Differentiate the same law used by the DC solver."""
+        _, gds, gm = self.current_and_derivatives(vds, vgs)
+        return gm, max(gds, self.gmin)
+
     def get_voltage(self, scb):
         scb.v[self.ref] = scb.x[self.ref]
 
@@ -720,63 +792,12 @@ class vccs_l1_mosfet(TwoPortElement):
     def get_current(self, scb):
         scb.i[self.i_x_ref] = scb.x[self.i_x_ref]
 
-    # def get_dependent_current(self, scb):
-
-    #     self.vds = scb.v[self.ref]
-    #     self.vgs = scb.v[self.vgs_ref]
-
-    #     sign = 1
-    #     #self.diode()
-    #     if self.vds < 0:
-    #         self.vgs = self.vgs - self.vds
-    #         #self.vgs = -1 * self.vgs
-    #         self.vds = -1 * self.vds
-    #         #self.vgs = self.vgs - self.vds
-    #         sign = -1
-
-    #     #self.vgs = np.abs(self.vgs)
-
-    #     #self.diode()
-
-    #     #if self.vds < 0:
-    #     #    sign = -1
-    #     #    #self.vgs, self.vds = self.vgs - self.vds, -self.vds  # Swap vgs and vds to model reverse conduction
-    #     #    self.vgs, self.vds = self.vgs, -self.vds  # Swap vgs and vds to model reverse conduction
-    #     #    self.print_stats()
-
-
-    #     if self.check_tri():
-    #         scb.i[self.i_d_ref] = self.tri()
-    #     elif self.check_sat():
-    #         scb.i[self.i_d_ref] = self.sat()
-    #     else:
-    #         scb.i[self.i_d_ref] = (1e-9 * self.vds)
-
-    #     scb.i[self.i_d_ref] = sign * scb.i[self.i_d_ref]
-    #     #print (self.diode_id)
-    #     #scb.i[self.i_d_ref] = sign * (scb.i[self.i_d_ref] + self.diode_id)
-
     def get_dependent_current(self, scb):
-
         self.vds = scb.v[self.ref]
         self.vgs = scb.v[self.vgs_ref]
-
-        # handle negative Vds symmetrically (keep your original idea)
-        sign = 1
-        if self.vds < 0:
-            self.vgs = self.vgs - self.vds
-            self.vds = -self.vds
-            sign = -1
-
-        w_tri, w_sat, w_off = self.region_weights()
-
-        ids_tri = self.tri()
-        ids_sat = self.sat()
-        ids_off = 1e-9 * self.vds
-
-        ids = w_tri * ids_tri + w_sat * ids_sat + w_off * ids_off
-
-        scb.i[self.i_d_ref] = sign * ids
+        # Reuse the original branch's I-vector slot for the calculated model
+        # current.  The same index in V/x remains the branch-voltage unknown.
+        scb.i[self.ref] = self.drain_current(self.vds, self.vgs)
 
     def get_dependent_voltage(self, scb):
         return 0.0
@@ -804,25 +825,8 @@ class vccs_l1_mosfet(TwoPortElement):
 
         vds = x[self.ref]
         vgs = x[self.vgs_ref]
-        ids = x[self.i_x_ref]
-
-        beta = self.KP * (self.W / self.L)
-
-        if self.get_region(x) == 0:
-            gm = math.sqrt(2 * beta * ids)
-        else:
-            gm = 0
-
-        vdssat = vgs - self.vth
-
-        idsat = (self.KP / 2) * (self.W / self.L) * vdssat**2
-
-        if self.get_region(x) == 0 and vdssat > 0.2:
-            ro = 1 / (self.l_lambda * idsat)
-        else:
-            ro = 0
-
-        return gm, ro
+        gm, gds = self.small_signal_params(vds, vgs)
+        return gm, 1.0 / gds
 
     def get_weight(self):
         return 3
@@ -830,27 +834,23 @@ class vccs_l1_mosfet(TwoPortElement):
     def set_dependencies(self, ckt):
 
         self.i_x_ref = ckt.num_edges
-        self.i_d_ref = ckt.num_edges + 1
 
-        # Add additional row/column to Qf, Bf and degen
-        ckt.qf = np.vstack([ckt.qf, np.zeros( ckt.qf.shape[0])])
-        ckt.qf = np.hstack((ckt.qf, np.zeros((ckt.qf.shape[0], 1))))
+        # Add one branch-current unknown and its constitutive equation.
         ckt.qf = np.vstack([ckt.qf, np.zeros( ckt.qf.shape[0])])
         ckt.qf = np.hstack((ckt.qf, np.zeros((ckt.qf.shape[0], 1))))
 
-        ckt.bf = np.vstack([ckt.bf, np.zeros( ckt.bf.shape[0])])
-        ckt.bf = np.hstack((ckt.bf, np.zeros((ckt.bf.shape[0], 1))))
         ckt.bf = np.vstack([ckt.bf, np.zeros( ckt.bf.shape[0])])
         ckt.bf = np.hstack((ckt.bf, np.zeros((ckt.bf.shape[0], 1))))
 
         ckt.qf[:, self.i_x_ref] = ckt.qf[:, self.ref]
         ckt.qf[:, self.ref]     = np.zeros(ckt.qf.shape[0])
 
-        # Update Qf for degen
-        ckt.qf[ckt.num_edges][self.i_x_ref]  = 1
-        ckt.qf[ckt.num_edges][self.i_d_ref] = -1
+        # i_guess - i_model(Vds, Vgs) = 0.  I[self.ref] contains
+        # the locally calculated model current.
+        ckt.qf[self.i_x_ref][self.i_x_ref] = 1
+        ckt.qf[self.i_x_ref][self.ref] = -1
 
-        ckt.num_edges += 2
+        ckt.num_edges += 1
 
     def get_dy(self, x, sys):
         return sys
@@ -891,13 +891,18 @@ class vccs_l1_mosfet_small(TwoPortElement):
 
         return [self.gm, self.ro]
 
-    def get_op_t(self, op, i_x_ref, vgs_ref):
+    def get_op_t(self, op, i_x_ref, vgs_ref, vds_ref=None):
 
         self.Ids = op.i[i_x_ref]
+        self.vds = op.v[self.ref if vds_ref is None else vds_ref]
         self.vgs = op.v[vgs_ref]
 
-        self.gm       = self.get_gm()
-        self.ro       = self.get_ro()
+        # Linearize the exact large-signal law rather than a separate hard-
+        # region square-law approximation.
+        dc_model = vccs_l1_mosfet()
+        dc_model.set_params(self.KP, self.vth, self.l_lambda, self.L, self.W)
+        self.gm, gds = dc_model.small_signal_params(self.vds, self.vgs)
+        self.ro = 1.0 / gds
 
         return [self.gm, self.ro]
 
@@ -917,7 +922,7 @@ class vccs_l1_mosfet_small(TwoPortElement):
 
         self.vgs = scb.v[self.vgs_ref]
 
-        scb.i[self.i_d_ref] = self.gm * self.vgs
+        scb.i[self.ref] = self.gm * self.vgs
 
     def get_dependent_voltage(self, scb):
         return 0.0
@@ -928,27 +933,21 @@ class vccs_l1_mosfet_small(TwoPortElement):
     def set_dependencies(self, ckt):
 
         self.i_x_ref = ckt.num_edges
-        self.i_d_ref = ckt.num_edges + 1
 
-        # Add additional row/column to Qf, Bf and degen
-        ckt.qf = np.vstack([ckt.qf, np.zeros( ckt.qf.shape[0])])
-        ckt.qf = np.hstack((ckt.qf, np.zeros((ckt.qf.shape[0], 1))))
+        # Add one branch-current unknown and its constitutive equation.
         ckt.qf = np.vstack([ckt.qf, np.zeros( ckt.qf.shape[0])])
         ckt.qf = np.hstack((ckt.qf, np.zeros((ckt.qf.shape[0], 1))))
 
-        ckt.bf = np.vstack([ckt.bf, np.zeros( ckt.bf.shape[0])])
-        ckt.bf = np.hstack((ckt.bf, np.zeros((ckt.bf.shape[0], 1))))
         ckt.bf = np.vstack([ckt.bf, np.zeros( ckt.bf.shape[0])])
         ckt.bf = np.hstack((ckt.bf, np.zeros((ckt.bf.shape[0], 1))))
 
         ckt.qf[:, self.i_x_ref] = ckt.qf[:, self.ref]
         ckt.qf[:, self.ref]     = np.zeros(ckt.qf.shape[0])
 
-        # Update Qf for degen
-        ckt.qf[ckt.num_edges][self.i_x_ref]  = 1
-        ckt.qf[ckt.num_edges][self.i_d_ref] = -1
+        ckt.qf[self.i_x_ref][self.i_x_ref] = 1
+        ckt.qf[self.i_x_ref][self.ref] = -1
 
-        ckt.num_edges += 2
+        ckt.num_edges += 1
 
     def get_dy(self, x, sys):
         return sys

@@ -80,7 +80,8 @@ class nmos_subckt(subckt):
         ids.set_vgs_ref(vgs_ref=vgs_ref)
         ids.set_src_dep_ref(ref=vgs_ref)
 
-        [gm, ro] = ids.get_op_t(op=op, i_x_ref=self.ids.i_x_ref, vgs_ref=self.vgs_ref)
+        [gm, ro] = ids.get_op_t(op=op, i_x_ref=self.ids.i_x_ref,
+                               vgs_ref=self.vgs_ref, vds_ref=self.ids_ref)
 
         if output_resistance:
             i_ro.set_value(ro)
@@ -105,6 +106,7 @@ class nmos_subckt(subckt):
         return ids_ref, vgs_ref
     
     def get_op_sml(self, op):
-        [gm, ro] = self.ids_sml.get_op_t(op=op, i_x_ref=self.ids.i_x_ref, vgs_ref=self.vgs_ref)
+        [gm, ro] = self.ids_sml.get_op_t(op=op, i_x_ref=self.ids.i_x_ref,
+                                        vgs_ref=self.vgs_ref, vds_ref=self.ids_ref)
 
         return gm, ro
