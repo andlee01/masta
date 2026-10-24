@@ -3,7 +3,10 @@ project:
   render:
     - capacitor.qmd
     - beta_multiplier.qmd
+    - beta_multiplier/beta_multiplier_nmos.qmd
     - parallel_lrc.qmd
+  resources:
+    - beta_multiplier/beta_multiplier_nmos.html
 
 website:
   title: "Analog Circuit Analysis"
@@ -13,6 +16,8 @@ website:
         text: Capacitor Analysis
       - href: beta_multiplier.qmd
         text: Beta Multiplier
+      - href: beta_multiplier/beta_multiplier_nmos.qmd
+        text: NMOS Current Sweep
       - href: parallel_lrc.qmd
         text: Parallel LRC
 

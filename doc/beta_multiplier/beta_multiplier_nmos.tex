@@ -1,0 +1,40 @@
+\documentclass{standalone}
+
+\usepackage{tikz}
+\usepackage[europeanresistors,americaninductors,americancurrents,siunitx]{circuitikz}
+
+\begin{document}
+ \begin{circuitikz}
+
+    % NMOS pair, using the same mirrored layout as the current-mirror figures.
+    \draw (0,3) node[nmos, xscale=-1, anchor=D](M1){}
+        node[below left, yshift=0.3cm, align=center] at (M1)
+        {$M_1$\\$W/L=10/2$};
+    \draw (4,3) node[nmos, anchor=D](M2){}
+        node[below right, yshift=0.3cm, align=center] at (M2)
+        {$M_2$\\$W/L=40/2$};
+
+    % Equal ideal current sources inject current from ground into both drains.
+    % No supply-voltage clamp is present in this test circuit.
+    \draw (0,5.5) to[short] (4,5.5);
+    \draw (2,5.5) node[circ] {} node[ground, rotate=180] {};
+    \draw (0,5.5) to[I, l=$I_{\mathrm{test}}$] (M1.D);
+    \draw (4,5.5) to[I, l_=$I_{\mathrm{test}}$] (M2.D);
+
+    % Diode-connected M1 and common gate connection.
+    \draw (M1.G) to[short] (M1.G |- M1.D) to[short] (M1.D);
+    \draw (M1.D) node[circ] {};
+    \draw (M1.G) node[circ] {} to[short] (M2.G);
+    \draw (2,0 |- M1.G) node[above] {$V_G$};
+
+    % Grounded source on M1; source degeneration on M2.
+    \draw (M1.S) to[short] (0,0) node[ground] {};
+    \draw (M2.S) to[R, l_={$R_{\mathrm{ref}}=6.5\,\mathrm{k\Omega}$}]
+        (4,0) node[ground] {};
+
+    % Drain-voltage measurement point and geometry labels.
+    \draw (M2.D) node[circ] {} to[short] ++(1.4,0)
+        node[ocirc] {} node[right] {$V_{D2}$};
+
+ \end{circuitikz}
+\end{document}

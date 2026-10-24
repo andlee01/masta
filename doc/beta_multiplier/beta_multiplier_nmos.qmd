@@ -1,0 +1,54 @@
+---
+title: "Beta Multiplier: NMOS Current Sweep"
+output-file: nmos_current_sweep.html
+date: today
+format:
+  html:
+    theme: flatly
+    html-math-method: mathjax
+    toc: false
+    number-sections: false
+    page-layout: full
+---
+
+```{=html}
+<style>
+html { font-size: 22px; }
+#quarto-content {
+  display: block !important;
+  width: 100% !important;
+  max-width: none !important;
+}
+#quarto-document-content {
+  box-sizing: border-box;
+  width: 100% !important;
+  max-width: none !important;
+  padding: 32px 2vw;
+  margin: 0 auto !important;
+}
+#quarto-document-content > p { font-size: 24px; line-height: 1.55; }
+#title-block-header h1 { font-size: 36px; }
+#title-block-header .quarto-title-meta { font-size: 24px; }
+.nmos-plot iframe {
+  display: block;
+  width: 100% !important;
+  max-width: none !important;
+  height: 900px !important;
+  border: 0;
+}
+.nmos-caption { font-size: 22px; line-height: 1.5; margin-top: 16px; }
+#fig-nmos-test-circuit img { max-width: 100%; height: auto; }
+#fig-nmos-test-circuit figcaption { font-size: 22px; }
+</style>
+```
+
+We isolate the beta multiplier's two NMOS transistors and source resistor, replacing the PMOS mirror with two equal current sources. Sweeping their common drain current using the existing transistor models with channel-length modulation shows the drain voltage required by $M_2$. The vertical lines mark the main current range where $M_2$ remains in saturation and its drain voltage stays below $5\,\mathrm{V}$.
+
+![NMOS test circuit with equal injected drain currents, diode-connected $M_1$, and source-degenerated $M_2$.](beta_multiplier_nmos.svg){#fig-nmos-test-circuit width=600}
+
+```{=html}
+<div class="nmos-plot">
+<iframe src="beta_multiplier_nmos.html" title="NMOS beta multiplier common-current sweep" width="100%" height="900" style="border:none;"></iframe>
+<p class="nmos-caption">Required M<sub>2</sub> drain voltage versus common drain current, with the saturation boundary and available drain-voltage limit. Saturation uses the conventional voltage boundary with the existing smooth transistor model; the 5 V limit is a voltage budget.</p>
+</div>
+```
