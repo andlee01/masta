@@ -126,22 +126,32 @@ def plot_sweep(currents, results, drain_limit, filename):
     fig.add_trace(go.Scatter(
         x=x, y=upper, mode="lines", line=dict(width=0), fill="tonexty",
         fillcolor="rgba(40,170,90,0.16)", name="Acceptable drain-voltage window",
-        hoverinfo="skip"))
+        showlegend=False, hoverinfo="skip"))
     fig.add_trace(go.Scatter(x=x, y=boundary, name="Saturation boundary: V<sub>G</sub> − V<sub>TH</sub>",
-                             line=dict(dash="dash")))
+                             line=dict(dash="dash"), showlegend=False))
     fig.add_trace(go.Scatter(x=x, y=np.full_like(x, drain_limit),
-                             name="Available drain-voltage limit", line=dict(dash="dot")))
-    fig.add_trace(go.Scatter(x=x, y=results["vd2"], name="M<sub>2</sub> drain voltage, λ = 0.0125 V⁻¹",
-                             mode="lines+markers", marker=dict(color="royalblue", size=6),
+                             name="Available drain-voltage limit", line=dict(dash="dot"),
+                             showlegend=False))
+    fig.add_trace(go.Scatter(x=x, y=results["vd2"], name=r"$M_2:\;V_{D2}$",
+                             mode="lines+markers", marker=dict(color="royalblue", size=4),
                              line=dict(color="royalblue"), connectgaps=False))
+    # M1 is diode-connected, so its drain voltage equals the common gate voltage.
+    fig.add_trace(go.Scatter(
+        x=x, y=results["vg"], name=r"$M_1:\;V_{D1}=V_G$",
+        mode="lines+markers", marker=dict(color="darkorange", size=4),
+        line=dict(color="darkorange"), connectgaps=False,
+    ))
     fig.update_layout(
         title=dict(text=r"$\text{NMOS beta multiplier: } I_{D1}=I_{D2}$",
                    x=0.5, xanchor="center", font=dict(size=28)),
         xaxis_title=r"$\text{Common drain current, } I_D\;(\mu\mathrm{A})$",
-        yaxis_title=r"$M_2\text{ drain voltage, } V_{D2}\;(\mathrm{V})$",
+        yaxis_title=r"$\text{Drain voltage, } V_D\;(\mathrm{V})$",
         template="plotly_white", hovermode="x unified",
         font=dict(size=22), hoverlabel=dict(font_size=22),
-        height=900, autosize=True, showlegend=False,
+        height=900, autosize=True, showlegend=True,
+        legend=dict(x=0.02, y=0.98, xanchor="left", yanchor="top",
+                    font=dict(size=22), bgcolor="rgba(255,255,255,0.95)",
+                    bordercolor="lightgray", borderwidth=1),
         margin=dict(l=115, r=45, t=95, b=100),
     )
     fig.update_xaxes(title_font=dict(size=25), tickfont=dict(size=22),

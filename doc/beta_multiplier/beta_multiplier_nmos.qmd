@@ -42,13 +42,21 @@ html { font-size: 22px; }
 </style>
 ```
 
-We isolate the beta multiplier's two NMOS transistors and source resistor, replacing the PMOS mirror with two equal current sources. Sweeping their common drain current using the existing transistor models with channel-length modulation shows the drain voltage required by $M_2$. The vertical lines mark the main current range where $M_2$ remains in saturation and its drain voltage stays below $5\,\mathrm{V}$.
+We isolate the beta multiplier's two NMOS transistors and source resistor, replacing the PMOS mirror with two equal current sources. Sweeping their common drain current using the existing transistor models with channel-length modulation shows the drain voltages of both devices; diode-connected $M_1$ has $V_{D1}=V_G$. The vertical lines mark the main current range where $M_2$ remains in saturation and its drain voltage stays below $5\,\mathrm{V}$.
 
 ![NMOS test circuit with equal injected drain currents, diode-connected $M_1$, and source-degenerated $M_2$.](beta_multiplier_nmos.svg){#fig-nmos-test-circuit width=600}
 
 ```{=html}
 <div class="nmos-plot">
 <iframe src="beta_multiplier_nmos.html" title="NMOS beta multiplier common-current sweep" width="100%" height="900" style="border:none;"></iframe>
-<p class="nmos-caption">Required M<sub>2</sub> drain voltage versus common drain current, with the saturation boundary and available drain-voltage limit. Saturation uses the conventional voltage boundary with the existing smooth transistor model; the 5 V limit is a voltage budget.</p>
+<p class="nmos-caption">M<sub>1</sub> and M<sub>2</sub> drain voltages versus common drain current, with the saturation boundary and available drain-voltage limit. Saturation uses the conventional voltage boundary with the existing smooth transistor model; the 5 V limit is a voltage budget.</p>
 </div>
 ```
+
+## What this shows
+
+The NMOS pair and source resistor constrain equal branch currents to a narrow range around the nominal reference current. Over a broad range of saturated $V_{DS2}$, the common current changes relatively little: the resistor and transistor size ratio largely determine the current, while channel-length modulation introduces a residual dependence on $M_2$'s drain voltage. The steep portion of the curve, comfortably above the saturation boundary, demonstrates this current-reference behaviour most clearly.
+
+For the ideal long-channel square-law model with no channel-length modulation, the nonzero equal-current solution is approximately $19.72\,\mu\mathrm{A}$. Its saturated portion would be vertical at that current. With the existing model and channel-length modulation enabled, the main acceptable interval is approximately $18.15$–$20.41\,\mu\mathrm{A}$ for the chosen $5\,\mathrm{V}$ drain limit.
+
+This experiment imposes equal currents to show which operating points the lower network can accommodate. In the complete beta multiplier, the PMOS mirror approximately enforces that equality and provides the remaining constraint that selects the operating point. The experiment does not demonstrate startup or eliminate the zero-current solution of the ideal complete circuit.
