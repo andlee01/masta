@@ -1,0 +1,7 @@
+# Dependencies for the beta multiplier scripts and numerical tests.
+numpy
+scipy
+plotly
+control
+networkx
+sympy
