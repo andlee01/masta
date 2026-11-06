@@ -22,7 +22,7 @@ A network branch has two associated attributes: branch current and branch voltag
 
 <a id="figure-1"></a>
 
-![Figure 1, panel a](figures/circuit1_tex.png)
+![Figure 1, panel a](figures/circuit1_tex.svg)
 
 ![Figure 1, panel b](figures/fig1a.svg)
 
@@ -153,7 +153,7 @@ State space representation of dynamical systems requires their state variables t
 
 <a id="figure-7"></a>
 
-![Figure 7](figures/circuit2_tex.png)
+![Figure 7](figures/circuit2_tex.svg)
 
 **Figure 7.** A simple electrical network displaying a capacitive loop.
 
@@ -172,7 +172,7 @@ From equation [(7)](#equation-7) it is clear that any of the system variables, $
 
 <a id="figure-8"></a>
 
-![Figure 8](figures/circuit3_tex.png)
+![Figure 8](figures/circuit3_tex.svg)
 
 **Figure 8.** A simple electrical network displaying a node connected only to inductive branches and current sources.
 
@@ -202,7 +202,7 @@ With the formulation of a proper tree, state variables of the network are select
 
 <a id="figure-9"></a>
 
-![Figure 9, panel a](figures/circuit1_tex.png)
+![Figure 9, panel a](figures/circuit1_tex.svg)
 
 ![Figure 9, panel b](figures/fig7a.svg)
 
@@ -223,7 +223,7 @@ If resistor $R_1$ of the figure above is replaced with a capacitor, the network 
 
 <a id="figure-10"></a>
 
-![Figure 10, panel a](figures/circuit2_tex.png)
+![Figure 10, panel a](figures/circuit2_tex.svg)
 
 ![Figure 10, panel b](figures/fig8a.svg)
 
@@ -250,7 +250,7 @@ Recall that branches corresponding to inductors may be required to complete the 
 
 <a id="figure-11"></a>
 
-![Figure 11, panel a](figures/circuit3_tex.png)
+![Figure 11, panel a](figures/circuit3_tex.svg)
 
 ![Figure 11, panel b](figures/fig9a.svg)
 
@@ -417,7 +417,7 @@ As an example of the above process, consider the network and corresponding prope
 
 <a id="figure-12"></a>
 
-![Figure 12, panel a](figures/circuit1_tex.png)
+![Figure 12, panel a](figures/circuit1_tex.svg)
 
 ![Figure 12, panel b](figures/fig10a.svg)
 

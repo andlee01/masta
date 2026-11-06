@@ -12,21 +12,33 @@ Commit both the `.qmd` source and generated `.md` file. The source also supports
 HTML output with `--to html`.
 
 The chapter was migrated from `~/website/html/equation_generation.html` on
-2026-11-06. All 28 unique referenced images are in `figures/`; the corresponding
-25 Graphviz `.dot` files and three standalone Circuitikz `.tex` files are in
+2026-11-06. Its 28 figure assets are SVGs in `figures/`; the corresponding 25
+Graphviz `.dot` files and three standalone Circuitikz `.tex` files are in
 `sources/`. The legacy originals were preserved. Windows download metadata,
 website menus, CSS, and MathJax scripts were excluded.
 
-The Graphviz source `fig1.dot` produces `figures/fig1a.svg`; other `.dot` files
-match their SVG stems. For example:
+Rebuild all figures from the repository root:
 
 ```bash
-dot -Tsvg doc/equation_generation/sources/fig1.dot -o doc/equation_generation/figures/fig1a.svg
+python3 scripts/generate_figures_equation_generation.py
+quarto render doc/equation_generation/equation_generation.qmd --to gfm
 ```
 
-The circuit PNGs came from the matching `circuit1.tex`, `circuit2.tex`, and
-`circuit3.tex` sources. Rebuilding those requires LaTeX with Circuitikz and a
-PDF-to-image converter; reading the chapter requires neither.
+The renderer requires Graphviz (`dot`), LaTeX with Circuitikz and its dependencies,
+and `dvisvgm`. It uses `latex` to generate DVI and `dvisvgm --no-fonts` to generate
+vector paths, including text, with no embedded raster circuit image. Intermediate
+files live in a temporary directory. Use `--tex-only` to regenerate just the
+three circuit diagrams if Graphviz is unavailable.
+
+The legacy script was `~/website/scripts/generate_figures_equation_generation.sh`.
+It used `dot -Tsvg` for graphs and `pdflatex` followed by ImageMagick `convert`
+for circuit images. The new renderer uses the chapter-local sources; `fig1.dot`
+still maps to `fig1a.svg`, and circuit TeX files map to `circuitN_tex.svg`.
+
+Commit the sources, generated SVGs, and generated Markdown together. GitHub's
+repository Markdown view displays the referenced images but does not execute
+Graphviz, LaTeX, or Quarto. Reading the chapter requires none of those tools.
+PDF, DVI, auxiliary files, and temporary PNG previews need not be committed.
 
 Migration retains the legacy exposition and equations rather than updating
 them to the current Python API. Equation labels were replaced with explicit
