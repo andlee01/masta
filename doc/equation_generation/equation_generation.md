@@ -21,11 +21,28 @@ A network branch has two associated attributes: branch current and branch voltag
 
 <a id="figure-1"></a>
 
-![Figure 1, panel a](figures/circuit1_tex.svg)
+<table>
 
-![Figure 1, panel b](figures/fig1a.svg)
+<tr>
 
-![Figure 1, panel c](figures/fig1b.svg)
+<td align="center">
+
+<img src="figures/circuit1_tex.svg" alt="Figure 1, panel a" width="360"><br>(a)
+</td>
+
+<td align="center">
+
+<img src="figures/fig1a.svg" alt="Figure 1, panel b" width="180"><br>(b)
+</td>
+
+<td align="center">
+
+<img src="figures/fig1b.svg" alt="Figure 1, panel c" width="180"><br>(c)
+</td>
+
+</tr>
+
+</table>
 
 **Figure 1.** A simple electrical network (a) and its corresponding directed branch voltage graph (b) and directed branch current graph (c).
 
@@ -37,11 +54,28 @@ A *loop* within a graph is a set of branches that form a closed path.
 
 <a id="figure-2"></a>
 
-![Figure 2, panel a](figures/fig2a.svg)
+<table>
 
-![Figure 2, panel b](figures/fig2b.svg)
+<tr>
 
-![Figure 2, panel c](figures/fig2c.svg)
+<td align="center">
+
+<img src="figures/fig2a.svg" alt="Figure 2, panel a" width="240"><br>(a)
+</td>
+
+<td align="center">
+
+<img src="figures/fig2b.svg" alt="Figure 2, panel b" width="240"><br>(b)
+</td>
+
+<td align="center">
+
+<img src="figures/fig2c.svg" alt="Figure 2, panel c" width="240"><br>(c)
+</td>
+
+</tr>
+
+</table>
 
 **Figure 2.** Three examples of closed loops within a simple graph.
 
@@ -49,11 +83,28 @@ A *cut* is a set of branches in a graph which, when cut off, will divide the gra
 
 <a id="figure-3"></a>
 
-![Figure 3, panel a](figures/fig3a.svg)
+<table>
 
-![Figure 3, panel b](figures/fig3b.svg)
+<tr>
 
-![Figure 3, panel c](figures/fig3c.svg)
+<td align="center">
+
+<img src="figures/fig3a.svg" alt="Figure 3, panel a" width="240"><br>(a)
+</td>
+
+<td align="center">
+
+<img src="figures/fig3b.svg" alt="Figure 3, panel b" width="240"><br>(b)
+</td>
+
+<td align="center">
+
+<img src="figures/fig3c.svg" alt="Figure 3, panel c" width="240"><br>(c)
+</td>
+
+</tr>
+
+</table>
 
 **Figure 3.** Three examples of cuts within a simple graph.
 
@@ -61,11 +112,28 @@ A *tree* is a set of branches in a graph in which any two nodes are connected by
 
 <a id="figure-4"></a>
 
-![Figure 4, panel a](figures/fig4a.svg)
+<table>
 
-![Figure 4, panel b](figures/fig4b.svg)
+<tr>
 
-![Figure 4, panel c](figures/fig4c.svg)
+<td align="center">
+
+<img src="figures/fig4a.svg" alt="Figure 4, panel a" width="240"><br>(a)
+</td>
+
+<td align="center">
+
+<img src="figures/fig4b.svg" alt="Figure 4, panel b" width="240"><br>(b)
+</td>
+
+<td align="center">
+
+<img src="figures/fig4c.svg" alt="Figure 4, panel c" width="240"><br>(c)
+</td>
+
+</tr>
+
+</table>
 
 **Figure 4.** Three examples of graph trees (solid lines) and corresponding co-trees (dashed lines).
 
@@ -73,11 +141,28 @@ A *basic cut* is a cut which contains only one tree branch. If a graph contains 
 
 <a id="figure-5"></a>
 
-![Figure 5, panel a](figures/fig5a.svg)
+<table>
 
-![Figure 5, panel b](figures/fig5b.svg)
+<tr>
 
-![Figure 5, panel c](figures/fig5c.svg)
+<td align="center">
+
+<img src="figures/fig5a.svg" alt="Figure 5, panel a" width="240"><br>(a)
+</td>
+
+<td align="center">
+
+<img src="figures/fig5b.svg" alt="Figure 5, panel b" width="240"><br>(b)
+</td>
+
+<td align="center">
+
+<img src="figures/fig5c.svg" alt="Figure 5, panel c" width="240"><br>(c)
+</td>
+
+</tr>
+
+</table>
 
 **Figure 5.** Three examples of basic cuts.
 
@@ -85,11 +170,28 @@ A *basic loop* is a loop which contains only one co-tree branch. There is one ba
 
 <a id="figure-6"></a>
 
-![Figure 6, panel a](figures/fig6a.svg)
+<table>
 
-![Figure 6, panel b](figures/fig6b.svg)
+<tr>
 
-![Figure 6, panel c](figures/fig6c.svg)
+<td align="center">
+
+<img src="figures/fig6a.svg" alt="Figure 6, panel a" width="240"><br>(a)
+</td>
+
+<td align="center">
+
+<img src="figures/fig6b.svg" alt="Figure 6, panel b" width="240"><br>(b)
+</td>
+
+<td align="center">
+
+<img src="figures/fig6c.svg" alt="Figure 6, panel c" width="240"><br>(c)
+</td>
+
+</tr>
+
+</table>
 
 **Figure 6.** Three examples of basic loops.
 
@@ -197,9 +299,23 @@ With the formulation of a proper tree, state variables of the network are select
 
 <a id="figure-9"></a>
 
-![Figure 9, panel a](figures/circuit1_tex.svg)
+<table>
 
-![Figure 9, panel b](figures/fig7a.svg)
+<tr>
+
+<td align="center">
+
+<img src="figures/circuit1_tex.svg" alt="Figure 9, panel a" width="480"><br>(a)
+</td>
+
+<td align="center">
+
+<img src="figures/fig7a.svg" alt="Figure 9, panel b" width="240"><br>(b)
+</td>
+
+</tr>
+
+</table>
 
 **Figure 9.** A simple electrical network and the corresponding proper tree. Solid lines indicate proper tree branches. Dashed lines indicate proper co-tree branches.
 
@@ -218,9 +334,23 @@ If resistor $R_1$ of the figure above is replaced with a capacitor, the network 
 
 <a id="figure-10"></a>
 
-![Figure 10, panel a](figures/circuit2_tex.svg)
+<table>
 
-![Figure 10, panel b](figures/fig8a.svg)
+<tr>
+
+<td align="center">
+
+<img src="figures/circuit2_tex.svg" alt="Figure 10, panel a" width="480"><br>(a)
+</td>
+
+<td align="center">
+
+<img src="figures/fig8a.svg" alt="Figure 10, panel b" width="240"><br>(b)
+</td>
+
+</tr>
+
+</table>
 
 **Figure 10.** A simple electrical network and the corresponding proper tree demonstrating a capacitive/voltage source loop.
 
@@ -245,9 +375,23 @@ Recall that branches corresponding to inductors may be required to complete the 
 
 <a id="figure-11"></a>
 
-![Figure 11, panel a](figures/circuit3_tex.svg)
+<table>
 
-![Figure 11, panel b](figures/fig9a.svg)
+<tr>
+
+<td align="center">
+
+<img src="figures/circuit3_tex.svg" alt="Figure 11, panel a" width="480"><br>(a)
+</td>
+
+<td align="center">
+
+<img src="figures/fig9a.svg" alt="Figure 11, panel b" width="240"><br>(b)
+</td>
+
+</tr>
+
+</table>
 
 **Figure 11.** A simple electrical network and the corresponding proper tree demonstrating a node connected only to inductors and current sources.
 
@@ -402,13 +546,23 @@ As an example of the above process, consider the network and corresponding prope
 
 <a id="figure-12"></a>
 
-![Figure 12, panel a](figures/circuit1_tex.svg)
+<table>
 
-![Figure 12, panel b](figures/fig10a.svg)
+<tr>
 
-![Figure 12, panel c](figures/fig10b.svg)
+<td align="center">
 
-![Figure 12, panel d](figures/fig10c.svg)
+<img src="figures/circuit1_tex.svg" alt="Figure 12, panel a" width="480"><br>(a)
+</td>
+
+<td align="center">
+
+<img src="figures/fig10a.svg" alt="Figure 12, panel b" width="240"><br>(b)
+</td>
+
+</tr>
+
+</table>
 
 **Figure 12.** A simple electrical network and corresponding proper tree (solid lines). Branches shown in red form a basic loop with inductor $L$, resistor $R_1$ and resistor $R_2$ respectively.
 
@@ -465,9 +619,23 @@ The $\mathbf{Q_f}$ matrix can be derived with the aid of the proper tree and app
 
 <a id="figure-13"></a>
 
-![Figure 13, panel a](figures/fig11a.svg)
+<table>
 
-![Figure 13, panel b](figures/fig11b.svg)
+<tr>
+
+<td align="center">
+
+<img src="figures/fig11a.svg" alt="Figure 13, panel a" width="360"><br>(a)
+</td>
+
+<td align="center">
+
+<img src="figures/fig11b.svg" alt="Figure 13, panel b" width="360"><br>(b)
+</td>
+
+</tr>
+
+</table>
 
 **Figure 13.** Basic cuts for capacitors $C_1$ and $C_2$ used to analyse the network shown above.
 
