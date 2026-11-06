@@ -6,10 +6,16 @@ from the repository root:
 
 ```bash
 quarto render doc/equation_generation/equation_generation.qmd --to gfm
+quarto render doc/equation_generation/equation_generation.qmd --to html
 ```
 
 Commit both the `.qmd` source and generated `.md` file. The source also supports
 HTML output with `--to html`.
+
+Equations use native Quarto labels such as `{#eq-capacitor-loop}` and references
+such as `@eq-capacitor-loop`. Quarto assigns equation numbers and resolves links
+for both Markdown and HTML; numbers must not be maintained manually. The four
+node KCL equations are display equations so they participate in this numbering.
 
 The chapter was migrated from `~/website/html/equation_generation.html` on
 2026-11-06. Its 28 figure assets are SVGs in `figures/`; the corresponding 25
@@ -41,7 +47,7 @@ Graphviz, LaTeX, or Quarto. Reading the chapter requires none of those tools.
 PDF, DVI, auxiliary files, and temporary PNG previews need not be committed.
 
 Multi-panel figures use HTML table rows that work in GitHub Markdown. Circuit
-panels are 480 pixels wide; graph panels are 200 pixels high with proportional
+panels are 480 pixels wide; graph panels are 240 pixels high with proportional
 widths, so tall, narrow graphs do not overwhelm the circuit drawings.
 
 On the current Linux/WSL computer, Graphviz is installed per user under
@@ -50,7 +56,10 @@ a sudo password. Other computers can use their normal Graphviz installation;
 the renderer only requires `dot` to be on `PATH`.
 
 Migration retains the legacy exposition and equations rather than updating
-them to the current Python API. Equation labels were replaced with explicit
-Markdown links, figure groups were numbered, and minor typographical errors
-were corrected. The basic-loop definition was corrected to count co-tree
-branches. The remaining derivations have not received a full technical review.
+them to the current Python API. Equation references now use native Quarto
+numbering, while figure captions and anchors remain explicit. The chapter has
+also received an incremental technical and wording review, including corrections
+to the capacitor-loop sign, state-variable constraints, tree selection, and
+matrix definitions and source cut-set signs, plus an explicit state-equation
+derivation. All six-branch matrix examples now use the same column order;
+row order follows the selected tree.

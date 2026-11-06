@@ -10,29 +10,25 @@ execute:
   enabled: false
 ---
 
-This chapter was migrated from the legacy Equation Generation documentation.
-The [Quarto source](equation_generation.qmd), figure assets, and editable drawing
-sources are kept together in this directory.
-
 ## Circuit Topology and Graph Theory
 
-The topology of an electrical network may be encapsulated by one or more directed graphs. In the context of such a representation, graph nodes are analogous to network nodes and graph edges are analogous to network branches, where a branch represents the network element connected between any two network nodes.
+An electrical network can be represented by a graph whose nodes correspond to circuit nodes and whose branches correspond to two-terminal circuit elements. Assigning a reference direction to each branch produces a directed graph.
 
-A network branch has two associated attributes: branch current and branch voltage. Therefore, two distinct directed graphs are obtained from a single electrical network: the directed branch current graph and the directed branch voltage graph. An example of such a transformation is shown below.
+Each network branch has an associated current and voltage. The same network connectivity can be drawn with arrows indicating either current reference directions or voltage polarities. These drawings represent the same underlying graph.
 
 <a id="figure-1"></a>
 
 <table>
 <tr>
   <td align="center"><img src="figures/circuit1_tex.svg" alt="Figure 1, panel a" width="480"><br>(a)</td>
-  <td align="center"><img src="figures/fig1a.svg" alt="Figure 1, panel b" width="74" height="200"><br>(b)</td>
-  <td align="center"><img src="figures/fig1b.svg" alt="Figure 1, panel c" width="90" height="200"><br>(c)</td>
+  <td align="center"><img src="figures/fig1a.svg" alt="Figure 1, panel b" width="89" height="240"><br>(b)</td>
+  <td align="center"><img src="figures/fig1b.svg" alt="Figure 1, panel c" width="109" height="240"><br>(c)</td>
 </tr>
 </table>
 
 **Figure 1.** A simple electrical network (a) and its corresponding directed branch voltage graph (b) and directed branch current graph (c).
 
-Note that the sign convention of the original electrical network has been maintained in both the directed current and voltage graphs. In this example, the arrows of the directed current graph indicate the direction of positive current flow within a branch. Likewise, the arrows of the directed voltage graph point towards the positive terminal, or node, of the branch.
+In the branch-current graph, each arrow defines the reference direction for positive current. A negative calculated current indicates flow opposite to that arrow. In the branch-voltage graph, each arrow points towards the terminal defined as positive, so the branch voltage is the potential at the arrowhead minus the potential at the tail. These reference directions and polarities are retained when forming the KCL and KVL equations.
 
 ## Graph Theory Definitions
 
@@ -42,126 +38,133 @@ A *loop* within a graph is a set of branches that form a closed path.
 
 <table>
 <tr>
-  <td align="center"><img src="figures/fig2a.svg" alt="Figure 2, panel a" width="74" height="200"><br>(a)</td>
-  <td align="center"><img src="figures/fig2b.svg" alt="Figure 2, panel b" width="74" height="200"><br>(b)</td>
-  <td align="center"><img src="figures/fig2c.svg" alt="Figure 2, panel c" width="74" height="200"><br>(c)</td>
+  <td align="center"><img src="figures/fig2a.svg" alt="Figure 2, panel a" width="89" height="240"><br>(a)</td>
+  <td align="center"><img src="figures/fig2b.svg" alt="Figure 2, panel b" width="89" height="240"><br>(b)</td>
+  <td align="center"><img src="figures/fig2c.svg" alt="Figure 2, panel c" width="89" height="240"><br>(c)</td>
 </tr>
 </table>
 
 **Figure 2.** Three examples of closed loops within a simple graph.
 
-A *cut* is a set of branches in a graph which, when cut off, will divide the graph into two disconnected pieces. Each of these pieces is called a *surface*.
+A *cut* partitions the graph's nodes into two nonempty, disjoint groups. The corresponding *cut-set* consists of all branches connecting the two groups. A *surface* is a visual boundary enclosing one node group; the branches crossing this boundary form the cut-set.
 
 <a id="figure-3"></a>
 
 <table>
 <tr>
-  <td align="center"><img src="figures/fig3a.svg" alt="Figure 3, panel a" width="74" height="200"><br>(a)</td>
-  <td align="center"><img src="figures/fig3b.svg" alt="Figure 3, panel b" width="74" height="200"><br>(b)</td>
-  <td align="center"><img src="figures/fig3c.svg" alt="Figure 3, panel c" width="74" height="200"><br>(c)</td>
+  <td align="center"><img src="figures/fig3a.svg" alt="Figure 3, panel a" width="89" height="240"><br>(a)</td>
+  <td align="center"><img src="figures/fig3b.svg" alt="Figure 3, panel b" width="89" height="240"><br>(b)</td>
+  <td align="center"><img src="figures/fig3c.svg" alt="Figure 3, panel c" width="89" height="240"><br>(c)</td>
 </tr>
 </table>
 
 **Figure 3.** Three examples of cuts within a simple graph.
 
-A *tree* is a set of branches in a graph in which any two nodes are connected by exactly one path. A tree therefore contains no loops. If additional branches are added to the graph a loop will form. There may be many possible trees identifiable within a graph. The set of branches that do not form part of the tree are termed the *co-tree*.
+A *spanning tree* is a connected subgraph that contains every node of the original graph and contains no loops. Any two nodes are connected by exactly one path through the spanning tree. Adding any branch from the original graph that is not already in the spanning tree creates a loop. A connected graph may have several possible spanning trees. The branches that do not belong to the selected spanning tree form the *co-tree*. Throughout this chapter, the term *tree* refers to a spanning tree.
 
 <a id="figure-4"></a>
 
 <table>
 <tr>
-  <td align="center"><img src="figures/fig4a.svg" alt="Figure 4, panel a" width="74" height="200"><br>(a)</td>
-  <td align="center"><img src="figures/fig4b.svg" alt="Figure 4, panel b" width="74" height="200"><br>(b)</td>
-  <td align="center"><img src="figures/fig4c.svg" alt="Figure 4, panel c" width="74" height="200"><br>(c)</td>
+  <td align="center"><img src="figures/fig4a.svg" alt="Figure 4, panel a" width="89" height="240"><br>(a)</td>
+  <td align="center"><img src="figures/fig4b.svg" alt="Figure 4, panel b" width="89" height="240"><br>(b)</td>
+  <td align="center"><img src="figures/fig4c.svg" alt="Figure 4, panel c" width="89" height="240"><br>(c)</td>
 </tr>
 </table>
 
 **Figure 4.** Three examples of graph trees (solid lines) and corresponding co-trees (dashed lines).
 
-A *basic cut* is a cut which contains only one tree branch. If a graph contains *t* tree branches, there are *t* basic cuts.
+A *fundamental cut-set*, also called a *basic cut*, contains exactly one branch of the selected spanning tree. A spanning tree with $t$ branches defines $t$ fundamental cut-sets.
 
 <a id="figure-5"></a>
 
 <table>
 <tr>
-  <td align="center"><img src="figures/fig5a.svg" alt="Figure 5, panel a" width="90" height="200"><br>(a)</td>
-  <td align="center"><img src="figures/fig5b.svg" alt="Figure 5, panel b" width="90" height="200"><br>(b)</td>
-  <td align="center"><img src="figures/fig5c.svg" alt="Figure 5, panel c" width="90" height="200"><br>(c)</td>
+  <td align="center"><img src="figures/fig5a.svg" alt="Figure 5, panel a" width="109" height="240"><br>(a)</td>
+  <td align="center"><img src="figures/fig5b.svg" alt="Figure 5, panel b" width="109" height="240"><br>(b)</td>
+  <td align="center"><img src="figures/fig5c.svg" alt="Figure 5, panel c" width="109" height="240"><br>(c)</td>
 </tr>
 </table>
 
 **Figure 5.** Three examples of basic cuts.
 
-A *basic loop* is a loop which contains only one co-tree branch. There is one basic loop for each co-tree branch.
+A *fundamental loop*, also called a *basic loop*, contains exactly one co-tree branch. Adding a co-tree branch to the spanning tree creates its fundamental loop. There is one fundamental loop for each co-tree branch.
 
 <a id="figure-6"></a>
 
 <table>
 <tr>
-  <td align="center"><img src="figures/fig6a.svg" alt="Figure 6, panel a" width="74" height="200"><br>(a)</td>
-  <td align="center"><img src="figures/fig6b.svg" alt="Figure 6, panel b" width="74" height="200"><br>(b)</td>
-  <td align="center"><img src="figures/fig6c.svg" alt="Figure 6, panel c" width="74" height="200"><br>(c)</td>
+  <td align="center"><img src="figures/fig6a.svg" alt="Figure 6, panel a" width="89" height="240"><br>(a)</td>
+  <td align="center"><img src="figures/fig6b.svg" alt="Figure 6, panel b" width="89" height="240"><br>(b)</td>
+  <td align="center"><img src="figures/fig6c.svg" alt="Figure 6, panel c" width="89" height="240"><br>(c)</td>
 </tr>
 </table>
 
 **Figure 6.** Three examples of basic loops.
 
-## Kirchhoff\'s Current Law (KCL)
+## Kirchhoff's Current Law (KCL)
 
-Kirchhoff\'s Current Law (KCL) establishes the relationship between the currents converging on a circuit node. The law states that *the algebraic sum of the currents in all the branches that converge in a common node is equal to zero*. Adopting the convention that current flow directed towards a node is positive, the KCL equations of the nodes for the electrical network displayed above are presented in the table below.
+Kirchhoff's Current Law (KCL) establishes the relationship between the currents converging on a circuit node. The law states that *the algebraic sum of the currents in all the branches that converge in a common node is equal to zero*. Adopting the convention that current flow directed towards a node is positive, the KCL equations of the nodes for the electrical network displayed above are given below.
 
-  Node   KCL Equation
-  ------ -----------------------
-  0      <a id="equation-1"></a>$i_{C_1} + i_{R_2} - i_S = 0$
-  1      <a id="equation-2"></a>$i_S - i_{C_2} - i_L = 0$
-  2      <a id="equation-3"></a>$i_L - i_{C_1} - i_{R_1} = 0$
-  3      <a id="equation-4"></a>$i_{R_1} + i_{C_2} - i_{R_2} = 0$
+At node 0:
 
-KCL may be generalised by considering graph surfaces that contain one or more nodes. Written in this form, KCL states that *the algebraic sum of the currents entering and leaving a surface is equal to zero*. Adopting the convention that positive currents flow into the surface containing the nodes coloured blue, the KCL equations for the three surfaces of the electrical network displayed above are presented in the table below.
+$$
+i_{C_1} + i_{R_2} - i_S = 0
+$$ {#eq-node-zero-kcl}
 
-  Surface   KCL Equation
-  --------- -----------------------
-  0         $i_{C_2} + i_{R_1} - i_{R_2} = 0$
-  1         $i_{C_1} + i_{R_2} - i_S = 0$
-  2         $i_L + i_{R_2} - i_S - i_{R_1} = 0$
+At node 1:
 
-To understand why this generalisation of KCL is valid, consider the KCL equations of nodes 0 and 2 which form a surface in example 3:
+$$
+i_S - i_{C_2} - i_L = 0
+$$ {#eq-node-one-kcl}
 
-<a id="equation-5"></a>
+At node 2:
+
+$$
+i_L - i_{C_1} - i_{R_1} = 0
+$$ {#eq-node-two-kcl}
+
+At node 3:
+
+$$
+i_{R_1} + i_{C_2} - i_{R_2} = 0
+$$ {#eq-node-three-kcl}
+
+KCL also applies to a group of nodes: the algebraic sum of currents crossing the group's boundary is zero. Taking currents entering the blue node group as positive, the three cut-sets in [Figure 5](#figure-5) give:
+
+| Panel | Enclosed nodes | KCL equation |
+|:------|:---------------|:-------------|
+| (a) | $\{3\}$ | $i_{C_2}+i_{R_1}-i_{R_2}=0$ |
+| (b) | $\{0\}$ | $i_{C_1}+i_{R_2}-i_S=0$ |
+| (c) | $\{0,2\}$ | $i_L+i_{R_2}-i_S-i_{R_1}=0$ |
+
+To understand why this generalisation of KCL is valid, consider the KCL equations of nodes 0 and 2, which form the enclosed node group in [Figure 5(c)](#figure-5):
 
 $$
 \begin{gathered}
 i_L - i_{C_1} - i_{R_1} = 0 \\
         i_{C_1} + i_{R_2} - i_S = 0
 \end{gathered}
-$$
+$$ {#eq-summed-node-kcl}
 
-
-Equation (5).
-
-Notice that branch current $i_{C_1}$ appears in both equations and that it does not form part of the basic cut of example 3. Adding the equations of [(5)](#equation-5):
-
-<a id="equation-6"></a>
+Notice that branch current $i_{C_1}$ appears in both equations and that it does not form part of the basic cut of [Figure 5(c)](#figure-5). Adding the equations of @eq-summed-node-kcl:
 
 $$
 i_L + i_{R_2} - i_S - i_{R_1} = 0
-$$
+$$ {#eq-surface-kcl}
 
-
-Equation (6).
-
-Which is identical to the equation derived using the surface definition of KCL. This form of KCL presents a convenient method of deriving network equations that contain only a single tree branch ($i_L$) which will prove useful when formulating a complete network description.
+The result is identical to the equation obtained by applying KCL to the enclosed node group. Currents in branches internal to the group cancel, leaving only the currents crossing its boundary. For a fundamental cut-set, exactly one of those branches belongs to the spanning tree.
 
 ## Independent KVL and KCL Equations
 
-It can be shown that a network with $l$ branches and $k$ nodes exhibits $m = l - (k - 1)$ linearly independent loop equations and $p = k - 1$ linearly independent node equations. Therefore, a complete description of the network, free from redundancy, requires exactly $m$ loop equations and $p$ node equations. Analysis of equations [(1)](#equation-1) - [(4)](#equation-4) shows that the equations are **linearly dependent**. If one equation is arbitrarily omitted, the remaining set of equations are **linearly independent**, as expected.
+For a connected network with $l$ branches and $k$ nodes, there are $p = k - 1$ independent KCL equations and $m = l - k + 1$ independent KVL equations. These $m$ KVL equations and $p$ KCL equations form an independent set of topology constraints. The element constitutive relations are also required to determine the circuit response. Analysis of @eq-node-zero-kcl through @eq-node-three-kcl shows that the equations are **linearly dependent**. If one equation is arbitrarily omitted, the remaining set of equations are **linearly independent**, as expected.
 
 ## Independent State Variables
 
-State space representation of dynamical systems requires their state variables to be linearly independent i.e. no state variable can be written as a linear combination of the other state variables or the system will not be able to be solved. This will also prevent the arbitrary assignment of initial conditions. Certain network topologies give rise to dependency amongst the potential state variables of the system. This occurs in two distinct forms:
+An ordinary state-space formulation uses independent state variables. If an algebraic constraint relates candidate state variables to each other and to the inputs, their initial values cannot be assigned independently. A dependent variable must be eliminated, or the constraint must be retained in a differential-algebraic formulation. For the ideal, uncoupled RLC networks considered here, two relevant topologies impose such constraints:
 
 1.  Loops consisting exclusively of capacitive elements and/or voltage sources
-2.  Nodes connected to branches containing only inductors and/or current sources
+2.  Cut-sets consisting exclusively of inductors and/or current sources
 
 <a id="figure-7"></a>
 
@@ -171,16 +174,11 @@ State space representation of dynamical systems requires their state variables t
 
 As an example of condition 1, consider the network shown above which displays a loop consisting of three capacitors and a voltage source. The KVL equation of this loop may be written as:
 
-<a id="equation-7"></a>
-
 $$
-v_{in} - v_{C_1} - v_{C_2} - v_{C_3} = 0
-$$
+v_{in} - v_{C_1} - v_{C_2} + v_{C_3} = 0
+$$ {#eq-capacitor-loop}
 
-
-Equation (7).
-
-From equation [(7)](#equation-7) it is clear that any of the system variables, $v_{C_1}$, $v_{C_2}$ or $v_{C_3}$, can be expressed as a linear combination of the other variables and system input. Alternatively, at time $t = t_0$, the initial conditions of the state variables cannot be assigned arbitrary values if equation [(7)](#equation-7) is to hold. Selecting all three of the variables $v_{C_1}$, $v_{C_2}$ and $v_{C_3}$ for inclusion in the state vector will therefore result in a system which cannot be solved.
+@eq-capacitor-loop imposes an algebraic constraint between $v_{C_1}$, $v_{C_2}$, $v_{C_3}$, and the source voltage $v_{in}$. Any one of the capacitor voltages can therefore be expressed in terms of the other two and the source voltage. Consequently, their initial values cannot be assigned independently; they must satisfy $v_{C_1}(t_0)+v_{C_2}(t_0)-v_{C_3}(t_0)=v_{in}(t_0)$. The three capacitor voltages cannot all serve as independent state variables in an ordinary state-space formulation. One voltage must be eliminated using @eq-capacitor-loop, or all three may be retained in a differential-algebraic formulation that explicitly includes this constraint.
 
 <a id="figure-8"></a>
 
@@ -190,34 +188,29 @@ From equation [(7)](#equation-7) it is clear that any of the system variables, $
 
 As an example of condition 2, consider the network shown above in which node 1 is connected to two inductive branches and a current source. The KCL equation for node 1 may be written as:
 
-<a id="equation-8"></a>
-
 $$
-i_{s} - i_{L_1} - i_{L_2} = 0
-$$
+i_S - i_{L_1} - i_{L_2} = 0
+$$ {#eq-inductor-cutset}
 
-
-Equation (8).
-
-From equation [(8)](#equation-8) it is clear that any of the system variables, $i_{L_1}$ and $i_{L_2}$ can be expressed as a linear combination of the other variables and system input. Alternatively, at time $t = t_0$, the initial conditions of the state variables cannot be assigned arbitrary values if equation [(8)](#equation-8) is to hold. Selecting both of the variables $i_{L_1}$ and $i_{L_2}$ for inclusion in the state vector will therefore result in a system which cannot be solved.
+@eq-inductor-cutset imposes an algebraic constraint between $i_{L_1}$, $i_{L_2}$, and the source current $i_S$. Either inductor current can therefore be expressed in terms of the other and the source current. Consequently, their initial values cannot be assigned independently; they must satisfy $i_{L_1}(t_0)+i_{L_2}(t_0)=i_S(t_0)$. The two currents cannot both serve as independent state variables in an ordinary state-space formulation. One current must be eliminated using @eq-inductor-cutset, or both currents may be retained in a differential-algebraic formulation that explicitly includes this constraint.
 
 ## Selection of State Variables
 
-A systematic approach to identifying the minimum set of linearly independent state variables required to completely define the system is obtained by forming the *proper tree* of the network. The proper tree is a graph tree derived from the original network graph. Member branches of the proper tree are a subset of the original graph which are selected according to the following order of priorities:
+A *proper tree* is a spanning tree selected to identify independent capacitor voltages and inductor currents. For the ideal RLC networks considered here, branches are selected in the following order:
 
-1.  All branches corresponding to a voltage source must be selected.
+1.  All independent voltage-source branches must be included, provided that these branches do not form a loop.
 2.  The maximum possible number of branches corresponding to a capacitor should be selected. Recall that the definition of a tree prohibits graph loops and as such, it may not be possible to include every capacitor of the network in the proper tree.
 3.  The maximum possible number of branches corresponding to a resistor should be selected such that the definition of tree is not violated.
-4.  The necessary number of branches corresponding to inductors and current sources required to complete the graph tree should be selected.
+4.  Include as many inductor branches as necessary to complete the tree. A cut-set consisting only of ideal current sources requires separate treatment.
 
-With the formulation of a proper tree, state variables of the network are selected as the branch voltages of all capacitors whose branches are members of the proper tree and the branch currents of all inductors whose branches are members of the proper co-tree.
+The selected state variables are the voltages of tree capacitors and the currents of co-tree inductors. This construction assumes that the ideal voltage sources do not form a loop and that no cut-set consists exclusively of ideal current sources. Such source-only configurations require separate consistency and solvability analysis.
 
 <a id="figure-9"></a>
 
 <table>
 <tr>
   <td align="center"><img src="figures/circuit1_tex.svg" alt="Figure 9, panel a" width="480"><br>(a)</td>
-  <td align="center"><img src="figures/fig7a.svg" alt="Figure 9, panel b" width="90" height="200"><br>(b)</td>
+  <td align="center"><img src="figures/fig7a.svg" alt="Figure 9, panel b" width="109" height="240"><br>(b)</td>
 </tr>
 </table>
 
@@ -230,7 +223,7 @@ $$
         \begin{bmatrix}
         v_{C_1} \\
         v_{C_2} \\
-        i_{L} \\
+        i_L \\
         \end{bmatrix}
 $$
 
@@ -241,13 +234,13 @@ If resistor $R_1$ of the figure above is replaced with a capacitor, the network 
 <table>
 <tr>
   <td align="center"><img src="figures/circuit2_tex.svg" alt="Figure 10, panel a" width="480"><br>(a)</td>
-  <td align="center"><img src="figures/fig8a.svg" alt="Figure 10, panel b" width="90" height="200"><br>(b)</td>
+  <td align="center"><img src="figures/fig8a.svg" alt="Figure 10, panel b" width="109" height="240"><br>(b)</td>
 </tr>
 </table>
 
 **Figure 10.** A simple electrical network and the corresponding proper tree demonstrating a capacitive/voltage source loop.
 
-Notice that the above network exhibits a loop consisting of three capacitors and a voltage source. Only the $C_1$ and $C_2$ capacitor branches are members of the proper tree. If $C_3$ were to be included then a loop would be formed, violating the definition of the proper tree. This is an example of where not all capacitor branches can be included in the proper tree. Note that an equally valid proper tree may be formed using any two of the capacitor branches and the choice of which two to use is arbitrary. Since one of the capacitor branches is linearly dependent on the other two, its value may be calculated from the system variables and inputs. For the example shown above, $v_{C_3}$ may be calculated as:
+Notice that the above network exhibits a loop consisting of three capacitors and a voltage source. Only the $C_1$ and $C_2$ capacitor branches are members of the proper tree. If $C_3$ were to be included then a loop would be formed, violating the definition of the proper tree. This is an example of where not all capacitor branches can be included in the proper tree. Note that an equally valid proper tree may be formed using any two of the capacitor branches and the choice of which two to use is arbitrary. The three capacitor voltages satisfy the constraint in @eq-capacitor-loop, so the voltage not selected as a state variable can be calculated from the other two voltages and the input. For the example shown above, $v_{C_3}$ may be calculated as:
 
 $$
 v_{C_3} = v_{C_1} + v_{C_2} - v_{in}
@@ -260,18 +253,18 @@ $$
         \begin{bmatrix}
         v_{C_1} \\
         v_{C_2} \\
-        i_{L} \\
+        i_L \\
         \end{bmatrix}
 $$
 
-Recall that branches corresponding to inductors may be required to complete the proper tree. Such a situation arises when a node exists that is connected only to inductors and current sources. An example of such a network and its corresponding proper tree are shown below. Note that an equally valid proper tree may be formed using any one of the inductive branches ($L_1$, $L_2$ or $L_3$).
+Recall that branches corresponding to inductors may be required to complete the proper tree. Such a situation arises when a node exists that is connected only to inductors and current sources. An example of such a network and its corresponding proper tree are shown below. An equally valid proper tree may be formed by selecting either $L_1$ or $L_2$ to complete the tree.
 
 <a id="figure-11"></a>
 
 <table>
 <tr>
   <td align="center"><img src="figures/circuit3_tex.svg" alt="Figure 11, panel a" width="480"><br>(a)</td>
-  <td align="center"><img src="figures/fig9a.svg" alt="Figure 11, panel b" width="88" height="200"><br>(b)</td>
+  <td align="center"><img src="figures/fig9a.svg" alt="Figure 11, panel b" width="105" height="240"><br>(b)</td>
 </tr>
 </table>
 
@@ -288,145 +281,116 @@ $$
         \end{bmatrix}
 $$
 
-The inductor, $L_1$, which was required to complete the proper tree does not contribute to the state vector. This inductor is linearly dependent on other system variables and is therefore not required to solve the system. This is demonstrated by writing the KCL equation at node 1:
+Inductor $L_1$ completes the proper tree, but its current is not an independent state variable. The current $i_{L_1}$ is determined by the source current and the selected state current $i_{L_2}$ through KCL at node 1:
 
 $$
-i_{L_1} = i_{S} - i_{L_2}
+i_{L_1} = i_S - i_{L_2}
 $$
 
 ## Fundamental Cut-set Matrix (Qf)
 
-The fundamental cut-set matrix $\mathbf{Q_f}$ expresses the algebraic relationship of the branch currents flowing between the surfaces pertaining to the basic cuts of a network. It can be derived once the proper tree of the network has been identified. For example, the proper tree shown in [Figure 5](#figure-5) has three proper tree branches and therefore:
-
-The proper tree branch $i_{C2}$ is in the basic loops formed by co-tree branches $i_{R1}$ and $i_{R2}$.
-
-The proper tree branch $i_{C1}$ is in the basic loops formed by co-tree branches $i_{S}$ and $i_{R2}$.
-
-The proper tree branch $i_{L}$ is in the basic loops formed by co-tree branches $i_{R1}$, $i_{R2}$ and $i_{R2}$.
-
-Notice that in each of the basic loops described above, the list of traversed branches describes a basic cut. Therefore, it is clear that co-tree branches which form a basic loop with a proper tree branch are equivalent to the basic cut corresponding to this proper tree branch. For the proper tree branch $i_{C2}$, if the branch currents flowing into the surface containing nodes 0, 1 and 2 are considered as positive current flows, then the KCL equation for this basic cut may be written as:
-
-<a id="equation-9"></a>
+For the six-branch circuit used in the matrix examples, both branch vectors use the fixed order $(S,C_2,L,C_1,R_1,R_2)$, where $S$ denotes the input voltage-source branch. Thus,
 
 $$
-i_{C2} + i_{R1} - i_{R2} = 0
+\begin{aligned}
+\mathbf{i} &= [i_S,\,i_{C_2},\,i_L,\,i_{C_1},\,i_{R_1},\,i_{R_2}]^{\mathsf T},\\[4pt]
+\mathbf{v} &= [v_{in},\,v_{C_2},\,v_L,\,v_{C_1},\,v_{R_1},\,v_{R_2}]^{\mathsf T}.
+\end{aligned}
 $$
 
+The current $i_S$ flows through the voltage-source branch; it is not a separate current source. Matrix columns follow this branch order. Rows correspond to the fundamental cut-sets or loops of the selected tree, which may differ between examples.
 
-Equation (9).
+The fundamental cut-set matrix $\mathbf{Q_f}$ expresses the KCL equations for the fundamental cut-sets of a network. The spanning tree shown in [Figure 5](#figure-5) contains three tree branches and therefore has three fundamental cut-sets.
 
-Likewise, for the proper tree branch $i_{C1}$, if the branch currents flowing into the surface containing nodes 1, 2 and 3 are considered as positive current flows, the KCL equation for this basic cut may be written as:
+Removing one branch from the spanning tree divides the tree into two connected parts. The removed branch, together with all co-tree branches connecting those parts, forms the corresponding fundamental cut-set. For the tree shown in [Figure 5](#figure-5), the fundamental cut-sets are:
 
-<a id="equation-10"></a>
+- $C_2$: branches $C_2$, $R_1$, and $R_2$.
+- $C_1$: branches $C_1$, $R_2$, and the source branch.
+- $L$: branches $L$, $R_1$, $R_2$, and the source branch.
 
-$$
-i_{C1} + i_{R2} - i_{S} = 0
-$$
-
-
-Equation (10).
-
-Finally, for the proper tree branch $i_{L}$, if the branch currents flowing into the surface containing nodes 1 and 3 are considered as positive current flows, the KCL equation for this basic cut may be written as:
-
-<a id="equation-11"></a>
+For the fundamental cut-set associated with $C_2$, taking currents leaving the node group $\{0,1,2\}$ as positive gives:
 
 $$
-i_{L} + i_{R2} - i_{S} -i_{R1} = 0
+i_{C_2} + i_{R_1} - i_{R_2} = 0
+$$ {#eq-cutset-c2}
+
+For the fundamental cut-set associated with $C_1$, taking currents leaving the node group $\{1,2,3\}$ as positive gives:
+
 $$
+i_{C_1} + i_{R_2} - i_S = 0
+$$ {#eq-cutset-c1}
 
+For the fundamental cut-set associated with $L$, taking currents leaving the node group $\{1,3\}$ as positive gives:
 
-Equation (11).
+$$
+i_L + i_{R_2} - i_S -i_{R_1} = 0
+$$ {#eq-cutset-l}
 
-Equations [(9)](#equation-9), [(10)](#equation-10) and [(11)](#equation-11) may be compactly expressed in matrix form:
-
-<a id="equation-12"></a>
+@eq-cutset-c2, @eq-cutset-c1 and @eq-cutset-l may be compactly expressed in matrix form:
 
 $$
 \begin{bmatrix}
-        1 & 0 & 0 & 1 & -1 & 0 \\
         0 & 1 & 0 & 0 & 1 & -1 \\
-        0 & 0 & 1 & -1 & 1 & -1 \\
+        -1 & 0 & 0 & 1 & 0 & 1 \\
+        -1 & 0 & 1 & 0 & -1 & 1
         \end{bmatrix} \begin{bmatrix}
-        i_{C2} \\
-        i_{C1} \\
-        i_{L} \\
-        i_{R1} \\
-        i_{R2} \\
-        i_{S} \\
+        i_S \\
+        i_{C_2} \\
+        i_L \\
+        i_{C_1} \\
+        i_{R_1} \\
+        i_{R_2}
         \end{bmatrix} = \mathbf{0}
-$$
-
-
-Equation (12).
-
-<a id="equation-13"></a>
+$$ {#eq-cutset-matrix-expanded}
 
 $$
-\mathbf{Q_f} \mathbf{I_T} = \mathbf{0}
-$$
+\mathbf{Q_f} \mathbf{i} = \mathbf{0}
+$$ {#eq-cutset-system}
 
-
-Equation (13).
+Here, $\mathbf{i}$ denotes the branch-current vector displayed in @eq-cutset-matrix-expanded.
 
 ## Fundamental Basic Loop Matrix (Bf)
 
 The fundamental basic loop matrix $\mathbf{B_f}$ expresses the algebraic relationship of the branch voltages around the basic loops of a network. It can be derived once the co-tree of the network has been identified. For example, the proper tree shown in [Figure 6](#figure-6) has three co-tree branches and therefore the KVL equations may be written as:
 
-<a id="equation-14"></a>
+$$
+v_{R_1} + v_L - v_{C_2} = 0
+$$ {#eq-loop-r1}
 
 $$
-v_{R1} + v_{L} - v_{C2} = 0
-$$
-
-
-Equation (14). <a id="equation-15"></a>
+v_{in} - v_L - v_{C_1} = 0
+$$ {#eq-loop-source}
 
 $$
-v_{IN} - v_{L} - v_{C1} = 0
-$$
+v_{R_2} + v_{C_2} - v_L - v_{C_1} = 0
+$$ {#eq-loop-r2}
 
-
-Equation (15). <a id="equation-16"></a>
-
-$$
-v_{R2} + v_{C2} - v_{L} - v_{C1} = 0
-$$
-
-
-Equation (16).
-
-Equations [(14)](#equation-14), [(15)](#equation-15) and [(16)](#equation-16) may be compactly expressed in matrix form:
-
-<a id="equation-17"></a>
+@eq-loop-r1, @eq-loop-source and @eq-loop-r2 may be compactly expressed in matrix form:
 
 $$
 \begin{bmatrix}
-        -1 & 0 & 1 & 1 & 0 & 0 \\
-        0 & -1 & -1 & 0 & 0 & 1 \\
-        1 & -1 & -1 & 0 & 1 & 0 \\
+        0 & -1 & 1 & 0 & 1 & 0 \\
+        1 & 0 & -1 & -1 & 0 & 0 \\
+        0 & 1 & -1 & -1 & 0 & 1
         \end{bmatrix} \begin{bmatrix}
-        v_{C2} \\
-        v_{C1} \\
-        v_{L} \\
-        v_{R1} \\
-        v_{R2} \\
-        v_{IN} \\
+        v_{in} \\
+        v_{C_2} \\
+        v_L \\
+        v_{C_1} \\
+        v_{R_1} \\
+        v_{R_2}
         \end{bmatrix} = \mathbf{0}
-$$
-
-
-Equation (17). <a id="equation-18"></a>
+$$ {#eq-loop-matrix-expanded}
 
 $$
-\mathbf{B_f} \mathbf{V_T} = \mathbf{0}
-$$
+\mathbf{B_f} \mathbf{v} = \mathbf{0}
+$$ {#eq-loop-system}
 
-
-Equation (18).
+Here, $\mathbf{v}$ denotes the branch-voltage vector displayed in @eq-loop-matrix-expanded.
 
 ## Formulation of Network Equations
 
-Formulating a set of circuit equations is a multistep process. The procedure for any network is as follows:
+For the networks considered here, the circuit equations can be constructed as follows:
 
 1.  Identify any valid proper tree. State variables can be determined.
 2.  Identify the basic loops and basic cuts for the selected proper tree.
@@ -441,11 +405,11 @@ As an example of the above process, consider the network and corresponding prope
 <table>
 <tr>
   <td align="center"><img src="figures/circuit1_tex.svg" alt="Figure 12, panel a" width="480"><br>(a)</td>
-  <td align="center"><img src="figures/fig10a.svg" alt="Figure 12, panel b" width="74" height="200"><br>(b)</td>
+  <td align="center"><img src="figures/fig10a.svg" alt="Figure 12, panel b" width="89" height="240"><br>(b)</td>
 </tr>
 </table>
 
-**Figure 12.** A simple electrical network and corresponding proper tree (solid lines). Branches shown in red form a basic loop with inductor $L$, resistor $R_1$ and resistor $R_2$ respectively.
+**Figure 12.** A simple electrical network and corresponding spanning tree (solid lines). The branches highlighted in red form the fundamental loop associated with inductor $L$.
 
 Since capacitors $C_1$ and $C_2$ are members of the proper tree and inductor $L$ is a member of the co-tree, the state vector of the system may be written as:
 
@@ -454,13 +418,11 @@ $$
         \begin{bmatrix}
         v_{C_1} \\
         v_{C_2} \\
-        i_{L} \\
+        i_L \\
         \end{bmatrix}
 $$
 
-The $\mathbf{B_f}$ matrix can be derived with the aid of the proper tree and applying KVL loop analysis. The KVL loop for inductor $L$ is shown above.
-
-<a id="equation-19"></a>
+Applying KVL to the fundamental loops of the selected tree gives the matrix $\mathbf{B_f}$. The fundamental loop associated with inductor $L$ is highlighted above.
 
 $$
 \mathbf{B_f} =
@@ -468,44 +430,42 @@ $$
         -1 & 0 & 1 & 1 & 0 & 0 \\
         1 & -1 & 0 & -1 & 1 & 0 \\
         -1 & 1 & 0 & 0 & 0 & 1 \\
-        \end{bmatrix} \begin{bmatrix}
+        \end{bmatrix}
+$$ {#eq-example-loop-matrix}
+
+The corresponding branch-voltage vector satisfies:
+
+$$
+\mathbf{B_f} \begin{bmatrix}
         v_{in} \\
-        v_{C2} \\
-        v_{L} \\
-        v_{C1} \\
-        v_{R1} \\
-        v_{R2} \\
+        v_{C_2} \\
+        v_L \\
+        v_{C_1} \\
+        v_{R_1} \\
+        v_{R_2} \\
         \end{bmatrix} = \mathbf{0}
 $$
 
-
-Equation (19).
-
-The first row of the $\mathbf{B_f}$ matrix relates to the inductor, $L$. The second two rows describe KVL equations for resistors $R_1$ and $R_2$:
-
-<a id="equation-20"></a>
+The first row of $\mathbf{B_f}$ gives the inductor voltage. Using $v_L=L\,di_L/dt$ gives:
 
 $$
 \begin{bmatrix}
         L \\
         \end{bmatrix} \begin{bmatrix}
-        \frac{di_{L}}{dt} \\
+        \frac{di_L}{dt} \\
         \end{bmatrix} = \begin{bmatrix}
-        v_{in} - v_{C1} \\
+        v_{in} - v_{C_1} \\
         \end{bmatrix}
-$$
+$$ {#eq-inductor-dynamics}
 
-
-Equation (20).
-
-The $\mathbf{Q_f}$ matrix can be derived with the aid of the proper tree and applying the KCL surface analysis described above. The KCL surfaces for capacitors $C_1$ and $C_2$ are shown below.
+Applying KCL to the fundamental cut-sets of the selected tree gives the matrix $\mathbf{Q_f}$. The node groups defining the cut-sets for capacitors $C_1$ and $C_2$ are shown below.
 
 <a id="figure-13"></a>
 
 <table>
 <tr>
-  <td align="center"><img src="figures/fig11a.svg" alt="Figure 13, panel a" width="90" height="200"><br>(a)</td>
-  <td align="center"><img src="figures/fig11b.svg" alt="Figure 13, panel b" width="90" height="200"><br>(b)</td>
+  <td align="center"><img src="figures/fig11a.svg" alt="Figure 13, panel a" width="109" height="240"><br>(a)</td>
+  <td align="center"><img src="figures/fig11b.svg" alt="Figure 13, panel b" width="109" height="240"><br>(b)</td>
 </tr>
 </table>
 
@@ -513,30 +473,29 @@ The $\mathbf{Q_f}$ matrix can be derived with the aid of the proper tree and app
 
 If the convention that current flows in a positive direction through capacitors $C_1$ and $C_2$ is adopted, the $\mathbf{Q_f}$ matrix may be written as:
 
-<a id="equation-21"></a>
-
 $$
 \mathbf{Q_f} =
         \begin{bmatrix}
-        1 & 0 & 1 & 0 & -1 & 1 \\
+        1 & 0 & -1 & 0 & 1 & -1 \\
         0 & 1 & 0 & 0 & 1 & -1 \\
         0 & 0 & -1 & 1 & 1 & 0 \\
-        \end{bmatrix} \begin{bmatrix}
-        i_{S} \\
-        i_{C2} \\
-        i_{L} \\
-        i_{C1} \\
-        i_{R1} \\
-        i_{R2} \\
+        \end{bmatrix}
+$$ {#eq-example-cutset-matrix}
+
+The corresponding branch-current vector satisfies:
+
+$$
+\mathbf{Q_f} \begin{bmatrix}
+        i_S \\
+        i_{C_2} \\
+        i_L \\
+        i_{C_1} \\
+        i_{R_1} \\
+        i_{R_2} \\
         \end{bmatrix} = \mathbf{0}
 $$
 
-
-Equation (21).
-
-The first row of the $\mathbf{Q_f}$ matrix relates to the voltage source, $V_S$. The second two rows describe KCL equations for capacitors $C_1$ and $C_2$:
-
-<a id="equation-22"></a>
+The first row of $\mathbf{Q_f}$ determines the input source current. The remaining rows give the currents in $C_2$ and $C_1$. Using $i_C=C\,dv_C/dt$ gives:
 
 $$
 \begin{bmatrix}
@@ -546,32 +505,43 @@ $$
         \frac{dv_{C_2}}{dt} \\
         \frac{dv_{C_1}}{dt} \\
         \end{bmatrix} = \begin{bmatrix}
-        i_{R2} - i_{R1} \\
-        i_{L} -  i_{R1} \\
+        i_{R_2} - i_{R_1} \\
+        i_L -  i_{R_1} \\
         \end{bmatrix}
-$$
+$$ {#eq-capacitor-dynamics}
 
-
-Equation (22).
-
-Equations [(20)](#equation-20) and [(22)](#equation-22) together form a complete description of the electrical network. The quantities $i_{R1}$ and $i_{R2}$ are required before the equations can be solved. They may be determined by solving the $\mathbf{B_f}$ matrix equations relating to those edges:
-
-<a id="equation-23"></a>
+@eq-inductor-dynamics and @eq-capacitor-dynamics specify the state derivatives in terms of the state variables, input voltage, and resistor currents. The resistor currents $i_{R_1}$ and $i_{R_2}$ can be determined from the $\mathbf{B_f}$ equations for the corresponding branches:
 
 $$
-v_{in} - v_{C2} - v_{C1} + v_{R1} = 0
-$$
-
-
-Equation (23). <a id="equation-24"></a>
+v_{in} - v_{C_2} - v_{C_1} + v_{R_1} = 0
+$$ {#eq-resistor-r1-kvl}
 
 $$
--v_{in} + v_{C2} + v_{R2} = 0
+-v_{in} + v_{C_2} + v_{R_2} = 0
+$$ {#eq-resistor-r2-kvl}
+
+Isolating the resistor voltages in @eq-resistor-r1-kvl and @eq-resistor-r2-kvl, and applying Ohm's law, gives:
+
+$$
+\begin{aligned}
+i_{R_1} &= \frac{v_{C_1}+v_{C_2}-v_{in}}{R_1},\\[4pt]
+i_{R_2} &= \frac{v_{in}-v_{C_2}}{R_2}.
+\end{aligned}
 $$
 
+Substituting the resistor-current expressions into the capacitor and inductor equations gives an explicit state-space model:
 
-Equation (24).
+$$
+\begin{aligned}
+\frac{dv_{C_1}}{dt}
+&=\frac{1}{C_1}\left(i_L-\frac{v_{C_1}+v_{C_2}-v_{in}}{R_1}\right),\\[6pt]
+\frac{dv_{C_2}}{dt}
+&=\frac{1}{C_2}\left(\frac{v_{in}-v_{C_2}}{R_2}-\frac{v_{C_1}+v_{C_2}-v_{in}}{R_1}\right),\\[6pt]
+\frac{di_L}{dt}
+&=\frac{v_{in}-v_{C_1}}{L}.
+\end{aligned}
+$$
 
-Which, when divided by their component resistances, give the current through those edges.
+The state derivatives depend only on the selected state variables, the input voltage, and the component values. Given an input waveform and initial conditions, these equations can be integrated to obtain the transient response.
 
-In general, the current through resistors that form part of the co-tree can be determined by solving the $\mathbf{B_f}$ equations relating to those edges. Likewise, the voltage across a resistor that forms part of the spanning-tree can be determined by solving the $\mathbf{Q_f}$ equations relating to those edges.
+For a co-tree resistor, its fundamental-loop KVL equation determines its voltage from the tree-branch voltages; Ohm's law then gives its current. For a tree resistor, its fundamental-cut-set KCL equation determines its current from the co-tree branch currents; Ohm's law then gives its voltage.

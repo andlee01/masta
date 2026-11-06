@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.10.19">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Equation Generation</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="equation_generation_files/libs/clipboard/clipboard.min.js"></script>
+<script src="equation_generation_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="equation_generation_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="equation_generation_files/libs/quarto-html/popper.min.js"></script>
+<script src="equation_generation_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="equation_generation_files/libs/quarto-html/anchor.min.js"></script>
+<link href="equation_generation_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="equation_generation_files/libs/quarto-html/quarto-syntax-highlighting-bf27225e3a48a9273f3daa8f8e829971.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="equation_generation_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="equation_generation_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="equation_generation_files/libs/bootstrap/bootstrap-de6760d2ba409665517a97756ef548c5.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#circuit-topology-and-graph-theory" id="toc-circuit-topology-and-graph-theory" class="nav-link active" data-scroll-target="#circuit-topology-and-graph-theory">Circuit Topology and Graph Theory</a></li>
+  <li><a href="#graph-theory-definitions" id="toc-graph-theory-definitions" class="nav-link" data-scroll-target="#graph-theory-definitions">Graph Theory Definitions</a></li>
+  <li><a href="#kirchhoffs-current-law-kcl" id="toc-kirchhoffs-current-law-kcl" class="nav-link" data-scroll-target="#kirchhoffs-current-law-kcl">Kirchhoff’s Current Law (KCL)</a></li>
+  <li><a href="#independent-kvl-and-kcl-equations" id="toc-independent-kvl-and-kcl-equations" class="nav-link" data-scroll-target="#independent-kvl-and-kcl-equations">Independent KVL and KCL Equations</a></li>
+  <li><a href="#independent-state-variables" id="toc-independent-state-variables" class="nav-link" data-scroll-target="#independent-state-variables">Independent State Variables</a></li>
+  <li><a href="#selection-of-state-variables" id="toc-selection-of-state-variables" class="nav-link" data-scroll-target="#selection-of-state-variables">Selection of State Variables</a></li>
+  <li><a href="#fundamental-cut-set-matrix-qf" id="toc-fundamental-cut-set-matrix-qf" class="nav-link" data-scroll-target="#fundamental-cut-set-matrix-qf">Fundamental Cut-set Matrix (Qf)</a></li>
+  <li><a href="#fundamental-basic-loop-matrix-bf" id="toc-fundamental-basic-loop-matrix-bf" class="nav-link" data-scroll-target="#fundamental-basic-loop-matrix-bf">Fundamental Basic Loop Matrix (Bf)</a></li>
+  <li><a href="#formulation-of-network-equations" id="toc-formulation-of-network-equations" class="nav-link" data-scroll-target="#formulation-of-network-equations">Formulation of Network Equations</a></li>
+  </ul>
+<div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="equation_generation.md"><i class="bi bi-file-code"></i>Github (GFM)</a></li></ul></div></nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Equation Generation</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="circuit-topology-and-graph-theory" class="level2">
+<h2 class="anchored" data-anchor-id="circuit-topology-and-graph-theory">Circuit Topology and Graph Theory</h2>
+<p>An electrical network can be represented by a graph whose nodes correspond to circuit nodes and whose branches correspond to two-terminal circuit elements. Assigning a reference direction to each branch produces a directed graph.</p>
+<p>Each network branch has an associated current and voltage. The same network connectivity can be drawn with arrows indicating either current reference directions or voltage polarities. These drawings represent the same underlying graph.</p>
+<p><a id="figure-1" href=""></a></p>
+<table>
+<tbody><tr>
+<td align="center">
+<img src="figures/circuit1_tex.svg" alt="Figure 1, panel a" width="480"><br>(a)
+</td>
+<td align="center">
+<img src="figures/fig1a.svg" alt="Figure 1, panel b" width="89" height="240"><br>(b)
+</td>
+<td align="center">
+<img src="figures/fig1b.svg" alt="Figure 1, panel c" width="109" height="240"><br>(c)
+</td>
+</tr>
+</tbody></table>
+<p><strong>Figure 1.</strong> A simple electrical network (a) and its corresponding directed branch voltage graph (b) and directed branch current graph (c).</p>
+<p>In the branch-current graph, each arrow defines the reference direction for positive current. A negative calculated current indicates flow opposite to that arrow. In the branch-voltage graph, each arrow points towards the terminal defined as positive, so the branch voltage is the potential at the arrowhead minus the potential at the tail. These reference directions and polarities are retained when forming the KCL and KVL equations.</p>
+</section>
+<section id="graph-theory-definitions" class="level2">
+<h2 class="anchored" data-anchor-id="graph-theory-definitions">Graph Theory Definitions</h2>
+<p>A <em>loop</em> within a graph is a set of branches that form a closed path.</p>
+<p><a id="figure-2" href=""></a></p>
+<table>
+<tbody><tr>
+<td align="center">
+<img src="figures/fig2a.svg" alt="Figure 2, panel a" width="89" height="240"><br>(a)
+</td>
+<td align="center">
+<img src="figures/fig2b.svg" alt="Figure 2, panel b" width="89" height="240"><br>(b)
+</td>
+<td align="center">
+<img src="figures/fig2c.svg" alt="Figure 2, panel c" width="89" height="240"><br>(c)
+</td>
+</tr>
+</tbody></table>
+<p><strong>Figure 2.</strong> Three examples of closed loops within a simple graph.</p>
+<p>A <em>cut</em> partitions the graph’s nodes into two nonempty, disjoint groups. The corresponding <em>cut-set</em> consists of all branches connecting the two groups. A <em>surface</em> is a visual boundary enclosing one node group; the branches crossing this boundary form the cut-set.</p>
+<p><a id="figure-3" href=""></a></p>
+<table>
+<tbody><tr>
+<td align="center">
+<img src="figures/fig3a.svg" alt="Figure 3, panel a" width="89" height="240"><br>(a)
+</td>
+<td align="center">
+<img src="figures/fig3b.svg" alt="Figure 3, panel b" width="89" height="240"><br>(b)
+</td>
+<td align="center">
+<img src="figures/fig3c.svg" alt="Figure 3, panel c" width="89" height="240"><br>(c)
+</td>
+</tr>
+</tbody></table>
+<p><strong>Figure 3.</strong> Three examples of cuts within a simple graph.</p>
+<p>A <em>spanning tree</em> is a connected subgraph that contains every node of the original graph and contains no loops. Any two nodes are connected by exactly one path through the spanning tree. Adding any branch from the original graph that is not already in the spanning tree creates a loop. A connected graph may have several possible spanning trees. The branches that do not belong to the selected spanning tree form the <em>co-tree</em>. Throughout this chapter, the term <em>tree</em> refers to a spanning tree.</p>
+<p><a id="figure-4" href=""></a></p>
+<table>
+<tbody><tr>
+<td align="center">
+<img src="figures/fig4a.svg" alt="Figure 4, panel a" width="89" height="240"><br>(a)
+</td>
+<td align="center">
+<img src="figures/fig4b.svg" alt="Figure 4, panel b" width="89" height="240"><br>(b)
+</td>
+<td align="center">
+<img src="figures/fig4c.svg" alt="Figure 4, panel c" width="89" height="240"><br>(c)
+</td>
+</tr>
+</tbody></table>
+<p><strong>Figure 4.</strong> Three examples of graph trees (solid lines) and corresponding co-trees (dashed lines).</p>
+<p>A <em>fundamental cut-set</em>, also called a <em>basic cut</em>, contains exactly one branch of the selected spanning tree. A spanning tree with <span class="math inline">\(t\)</span> branches defines <span class="math inline">\(t\)</span> fundamental cut-sets.</p>
+<p><a id="figure-5" href=""></a></p>
+<table>
+<tbody><tr>
+<td align="center">
+<img src="figures/fig5a.svg" alt="Figure 5, panel a" width="109" height="240"><br>(a)
+</td>
+<td align="center">
+<img src="figures/fig5b.svg" alt="Figure 5, panel b" width="109" height="240"><br>(b)
+</td>
+<td align="center">
+<img src="figures/fig5c.svg" alt="Figure 5, panel c" width="109" height="240"><br>(c)
+</td>
+</tr>
+</tbody></table>
+<p><strong>Figure 5.</strong> Three examples of basic cuts.</p>
+<p>A <em>fundamental loop</em>, also called a <em>basic loop</em>, contains exactly one co-tree branch. Adding a co-tree branch to the spanning tree creates its fundamental loop. There is one fundamental loop for each co-tree branch.</p>
+<p><a id="figure-6" href=""></a></p>
+<table>
+<tbody><tr>
+<td align="center">
+<img src="figures/fig6a.svg" alt="Figure 6, panel a" width="89" height="240"><br>(a)
+</td>
+<td align="center">
+<img src="figures/fig6b.svg" alt="Figure 6, panel b" width="89" height="240"><br>(b)
+</td>
+<td align="center">
+<img src="figures/fig6c.svg" alt="Figure 6, panel c" width="89" height="240"><br>(c)
+</td>
+</tr>
+</tbody></table>
+<p><strong>Figure 6.</strong> Three examples of basic loops.</p>
+</section>
+<section id="kirchhoffs-current-law-kcl" class="level2">
+<h2 class="anchored" data-anchor-id="kirchhoffs-current-law-kcl">Kirchhoff’s Current Law (KCL)</h2>
+<p>Kirchhoff’s Current Law (KCL) establishes the relationship between the currents converging on a circuit node. The law states that <em>the algebraic sum of the currents in all the branches that converge in a common node is equal to zero</em>. Adopting the convention that current flow directed towards a node is positive, the KCL equations of the nodes for the electrical network displayed above are given below.</p>
+<p>At node 0:</p>
+<p><span id="eq-node-zero-kcl"><span class="math display">\[
+i_{C_1} + i_{R_2} - i_S = 0
+\tag{1}\]</span></span></p>
+<p>At node 1:</p>
+<p><span id="eq-node-one-kcl"><span class="math display">\[
+i_S - i_{C_2} - i_L = 0
+\tag{2}\]</span></span></p>
+<p>At node 2:</p>
+<p><span id="eq-node-two-kcl"><span class="math display">\[
+i_L - i_{C_1} - i_{R_1} = 0
+\tag{3}\]</span></span></p>
+<p>At node 3:</p>
+<p><span id="eq-node-three-kcl"><span class="math display">\[
+i_{R_1} + i_{C_2} - i_{R_2} = 0
+\tag{4}\]</span></span></p>
+<p>KCL also applies to a group of nodes: the algebraic sum of currents crossing the group’s boundary is zero. Taking currents entering the blue node group as positive, the three cut-sets in <a href="#figure-5">Figure 5</a> give:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th style="text-align: left;">Panel</th>
+<th style="text-align: left;">Enclosed nodes</th>
+<th style="text-align: left;">KCL equation</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">(a)</td>
+<td style="text-align: left;"><span class="math inline">\(\{3\}\)</span></td>
+<td style="text-align: left;"><span class="math inline">\(i_{C_2}+i_{R_1}-i_{R_2}=0\)</span></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">(b)</td>
+<td style="text-align: left;"><span class="math inline">\(\{0\}\)</span></td>
+<td style="text-align: left;"><span class="math inline">\(i_{C_1}+i_{R_2}-i_S=0\)</span></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">(c)</td>
+<td style="text-align: left;"><span class="math inline">\(\{0,2\}\)</span></td>
+<td style="text-align: left;"><span class="math inline">\(i_L+i_{R_2}-i_S-i_{R_1}=0\)</span></td>
+</tr>
+</tbody>
+</table>
+<p>To understand why this generalisation of KCL is valid, consider the KCL equations of nodes 0 and 2, which form the enclosed node group in <a href="#figure-5">Figure 5(c)</a>:</p>
+<p><span id="eq-summed-node-kcl"><span class="math display">\[
+\begin{gathered}
+i_L - i_{C_1} - i_{R_1} = 0 \\
+        i_{C_1} + i_{R_2} - i_S = 0
+\end{gathered}
+\tag{5}\]</span></span></p>
+<p>Notice that branch current <span class="math inline">\(i_{C_1}\)</span> appears in both equations and that it does not form part of the basic cut of <a href="#figure-5">Figure 5(c)</a>. Adding the equations of <a href="#eq-summed-node-kcl" class="quarto-xref">Equation&nbsp;5</a>:</p>
+<p><span id="eq-surface-kcl"><span class="math display">\[
+i_L + i_{R_2} - i_S - i_{R_1} = 0
+\tag{6}\]</span></span></p>
+<p>The result is identical to the equation obtained by applying KCL to the enclosed node group. Currents in branches internal to the group cancel, leaving only the currents crossing its boundary. For a fundamental cut-set, exactly one of those branches belongs to the spanning tree.</p>
+</section>
+<section id="independent-kvl-and-kcl-equations" class="level2">
+<h2 class="anchored" data-anchor-id="independent-kvl-and-kcl-equations">Independent KVL and KCL Equations</h2>
+<p>For a connected network with <span class="math inline">\(l\)</span> branches and <span class="math inline">\(k\)</span> nodes, there are <span class="math inline">\(p = k - 1\)</span> independent KCL equations and <span class="math inline">\(m = l - k + 1\)</span> independent KVL equations. These <span class="math inline">\(m\)</span> KVL equations and <span class="math inline">\(p\)</span> KCL equations form an independent set of topology constraints. The element constitutive relations are also required to determine the circuit response. Analysis of <a href="#eq-node-zero-kcl" class="quarto-xref">Equation&nbsp;1</a> through <a href="#eq-node-three-kcl" class="quarto-xref">Equation&nbsp;4</a> shows that the equations are <strong>linearly dependent</strong>. If one equation is arbitrarily omitted, the remaining set of equations are <strong>linearly independent</strong>, as expected.</p>
+</section>
+<section id="independent-state-variables" class="level2">
+<h2 class="anchored" data-anchor-id="independent-state-variables">Independent State Variables</h2>
+<p>An ordinary state-space formulation uses independent state variables. If an algebraic constraint relates candidate state variables to each other and to the inputs, their initial values cannot be assigned independently. A dependent variable must be eliminated, or the constraint must be retained in a differential-algebraic formulation. For the ideal, uncoupled RLC networks considered here, two relevant topologies impose such constraints:</p>
+<ol type="1">
+<li>Loops consisting exclusively of capacitive elements and/or voltage sources</li>
+<li>Cut-sets consisting exclusively of inductors and/or current sources</li>
+</ol>
+<p><a id="figure-7" href=""></a></p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="figures/circuit2_tex.svg" class="img-fluid figure-img"></p>
+<figcaption>Figure 7</figcaption>
+</figure>
+</div>
+<p><strong>Figure 7.</strong> A simple electrical network displaying a capacitive loop.</p>
+<p>As an example of condition 1, consider the network shown above which displays a loop consisting of three capacitors and a voltage source. The KVL equation of this loop may be written as:</p>
+<p><span id="eq-capacitor-loop"><span class="math display">\[
+v_{in} - v_{C_1} - v_{C_2} + v_{C_3} = 0
+\tag{7}\]</span></span></p>
+<p><a href="#eq-capacitor-loop" class="quarto-xref">Equation&nbsp;7</a> imposes an algebraic constraint between <span class="math inline">\(v_{C_1}\)</span>, <span class="math inline">\(v_{C_2}\)</span>, <span class="math inline">\(v_{C_3}\)</span>, and the source voltage <span class="math inline">\(v_{in}\)</span>. Any one of the capacitor voltages can therefore be expressed in terms of the other two and the source voltage. Consequently, their initial values cannot be assigned independently; they must satisfy <span class="math inline">\(v_{C_1}(t_0)+v_{C_2}(t_0)-v_{C_3}(t_0)=v_{in}(t_0)\)</span>. The three capacitor voltages cannot all serve as independent state variables in an ordinary state-space formulation. One voltage must be eliminated using <a href="#eq-capacitor-loop" class="quarto-xref">Equation&nbsp;7</a>, or all three may be retained in a differential-algebraic formulation that explicitly includes this constraint.</p>
+<p><a id="figure-8" href=""></a></p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="figures/circuit3_tex.svg" class="img-fluid figure-img"></p>
+<figcaption>Figure 8</figcaption>
+</figure>
+</div>
+<p><strong>Figure 8.</strong> A simple electrical network displaying a node connected only to inductive branches and current sources.</p>
+<p>As an example of condition 2, consider the network shown above in which node 1 is connected to two inductive branches and a current source. The KCL equation for node 1 may be written as:</p>
+<p><span id="eq-inductor-cutset"><span class="math display">\[
+i_S - i_{L_1} - i_{L_2} = 0
+\tag{8}\]</span></span></p>
+<p><a href="#eq-inductor-cutset" class="quarto-xref">Equation&nbsp;8</a> imposes an algebraic constraint between <span class="math inline">\(i_{L_1}\)</span>, <span class="math inline">\(i_{L_2}\)</span>, and the source current <span class="math inline">\(i_S\)</span>. Either inductor current can therefore be expressed in terms of the other and the source current. Consequently, their initial values cannot be assigned independently; they must satisfy <span class="math inline">\(i_{L_1}(t_0)+i_{L_2}(t_0)=i_S(t_0)\)</span>. The two currents cannot both serve as independent state variables in an ordinary state-space formulation. One current must be eliminated using <a href="#eq-inductor-cutset" class="quarto-xref">Equation&nbsp;8</a>, or both currents may be retained in a differential-algebraic formulation that explicitly includes this constraint.</p>
+</section>
+<section id="selection-of-state-variables" class="level2">
+<h2 class="anchored" data-anchor-id="selection-of-state-variables">Selection of State Variables</h2>
+<p>A <em>proper tree</em> is a spanning tree selected to identify independent capacitor voltages and inductor currents. For the ideal RLC networks considered here, branches are selected in the following order:</p>
+<ol type="1">
+<li>All independent voltage-source branches must be included, provided that these branches do not form a loop.</li>
+<li>The maximum possible number of branches corresponding to a capacitor should be selected. Recall that the definition of a tree prohibits graph loops and as such, it may not be possible to include every capacitor of the network in the proper tree.</li>
+<li>The maximum possible number of branches corresponding to a resistor should be selected such that the definition of tree is not violated.</li>
+<li>Include as many inductor branches as necessary to complete the tree. A cut-set consisting only of ideal current sources requires separate treatment.</li>
+</ol>
+<p>The selected state variables are the voltages of tree capacitors and the currents of co-tree inductors. This construction assumes that the ideal voltage sources do not form a loop and that no cut-set consists exclusively of ideal current sources. Such source-only configurations require separate consistency and solvability analysis.</p>
+<p><a id="figure-9" href=""></a></p>
+<table>
+<tbody><tr>
+<td align="center">
+<img src="figures/circuit1_tex.svg" alt="Figure 9, panel a" width="480"><br>(a)
+</td>
+<td align="center">
+<img src="figures/fig7a.svg" alt="Figure 9, panel b" width="109" height="240"><br>(b)
+</td>
+</tr>
+</tbody></table>
+<p><strong>Figure 9.</strong> A simple electrical network and the corresponding proper tree. Solid lines indicate proper tree branches. Dashed lines indicate proper co-tree branches.</p>
+<p>As an example of identifying the proper tree, consider the network and corresponding proper tree shown above. Notice that both capacitor branches of the network are members of the proper tree (solid lines) and that the inductor branch is a member of the proper co-tree (dashed lines). The state vector of this network may therefore be written as:</p>
+<p><span class="math display">\[
+\mathbf{x} =
+        \begin{bmatrix}
+        v_{C_1} \\
+        v_{C_2} \\
+        i_L \\
+        \end{bmatrix}
+\]</span></p>
+<p>If resistor <span class="math inline">\(R_1\)</span> of the figure above is replaced with a capacitor, the network and corresponding proper tree is as shown in the figure below.</p>
+<p><a id="figure-10" href=""></a></p>
+<table>
+<tbody><tr>
+<td align="center">
+<img src="figures/circuit2_tex.svg" alt="Figure 10, panel a" width="480"><br>(a)
+</td>
+<td align="center">
+<img src="figures/fig8a.svg" alt="Figure 10, panel b" width="109" height="240"><br>(b)
+</td>
+</tr>
+</tbody></table>
+<p><strong>Figure 10.</strong> A simple electrical network and the corresponding proper tree demonstrating a capacitive/voltage source loop.</p>
+<p>Notice that the above network exhibits a loop consisting of three capacitors and a voltage source. Only the <span class="math inline">\(C_1\)</span> and <span class="math inline">\(C_2\)</span> capacitor branches are members of the proper tree. If <span class="math inline">\(C_3\)</span> were to be included then a loop would be formed, violating the definition of the proper tree. This is an example of where not all capacitor branches can be included in the proper tree. Note that an equally valid proper tree may be formed using any two of the capacitor branches and the choice of which two to use is arbitrary. The three capacitor voltages satisfy the constraint in <a href="#eq-capacitor-loop" class="quarto-xref">Equation&nbsp;7</a>, so the voltage not selected as a state variable can be calculated from the other two voltages and the input. For the example shown above, <span class="math inline">\(v_{C_3}\)</span> may be calculated as:</p>
+<p><span class="math display">\[
+v_{C_3} = v_{C_1} + v_{C_2} - v_{in}
+\]</span></p>
+<p>The state vector for the network shown above may be written as:</p>
+<p><span class="math display">\[
+\mathbf{x} =
+        \begin{bmatrix}
+        v_{C_1} \\
+        v_{C_2} \\
+        i_L \\
+        \end{bmatrix}
+\]</span></p>
+<p>Recall that branches corresponding to inductors may be required to complete the proper tree. Such a situation arises when a node exists that is connected only to inductors and current sources. An example of such a network and its corresponding proper tree are shown below. An equally valid proper tree may be formed by selecting either <span class="math inline">\(L_1\)</span> or <span class="math inline">\(L_2\)</span> to complete the tree.</p>
+<p><a id="figure-11" href=""></a></p>
+<table>
+<tbody><tr>
+<td align="center">
+<img src="figures/circuit3_tex.svg" alt="Figure 11, panel a" width="480"><br>(a)
+</td>
+<td align="center">
+<img src="figures/fig9a.svg" alt="Figure 11, panel b" width="105" height="240"><br>(b)
+</td>
+</tr>
+</tbody></table>
+<p><strong>Figure 11.</strong> A simple electrical network and the corresponding proper tree demonstrating a node connected only to inductors and current sources.</p>
+<p>The state vector for the network shown above may be written as:</p>
+<p><span class="math display">\[
+\mathbf{x} =
+        \begin{bmatrix}
+        v_{C_1} \\
+        i_{L_2} \\
+        i_{L_3} \\
+        \end{bmatrix}
+\]</span></p>
+<p>Inductor <span class="math inline">\(L_1\)</span> completes the proper tree, but its current is not an independent state variable. The current <span class="math inline">\(i_{L_1}\)</span> is determined by the source current and the selected state current <span class="math inline">\(i_{L_2}\)</span> through KCL at node 1:</p>
+<p><span class="math display">\[
+i_{L_1} = i_S - i_{L_2}
+\]</span></p>
+</section>
+<section id="fundamental-cut-set-matrix-qf" class="level2">
+<h2 class="anchored" data-anchor-id="fundamental-cut-set-matrix-qf">Fundamental Cut-set Matrix (Qf)</h2>
+<p>For the six-branch circuit used in the matrix examples, both branch vectors use the fixed order <span class="math inline">\((S,C_2,L,C_1,R_1,R_2)\)</span>, where <span class="math inline">\(S\)</span> denotes the input voltage-source branch. Thus,</p>
+<p><span class="math display">\[
+\begin{aligned}
+\mathbf{i} &amp;= [i_S,\,i_{C_2},\,i_L,\,i_{C_1},\,i_{R_1},\,i_{R_2}]^{\mathsf T},\\[4pt]
+\mathbf{v} &amp;= [v_{in},\,v_{C_2},\,v_L,\,v_{C_1},\,v_{R_1},\,v_{R_2}]^{\mathsf T}.
+\end{aligned}
+\]</span></p>
+<p>The current <span class="math inline">\(i_S\)</span> flows through the voltage-source branch; it is not a separate current source. Matrix columns follow this branch order. Rows correspond to the fundamental cut-sets or loops of the selected tree, which may differ between examples.</p>
+<p>The fundamental cut-set matrix <span class="math inline">\(\mathbf{Q_f}\)</span> expresses the KCL equations for the fundamental cut-sets of a network. The spanning tree shown in <a href="#figure-5">Figure 5</a> contains three tree branches and therefore has three fundamental cut-sets.</p>
+<p>Removing one branch from the spanning tree divides the tree into two connected parts. The removed branch, together with all co-tree branches connecting those parts, forms the corresponding fundamental cut-set. For the tree shown in <a href="#figure-5">Figure 5</a>, the fundamental cut-sets are:</p>
+<ul>
+<li><span class="math inline">\(C_2\)</span>: branches <span class="math inline">\(C_2\)</span>, <span class="math inline">\(R_1\)</span>, and <span class="math inline">\(R_2\)</span>.</li>
+<li><span class="math inline">\(C_1\)</span>: branches <span class="math inline">\(C_1\)</span>, <span class="math inline">\(R_2\)</span>, and the source branch.</li>
+<li><span class="math inline">\(L\)</span>: branches <span class="math inline">\(L\)</span>, <span class="math inline">\(R_1\)</span>, <span class="math inline">\(R_2\)</span>, and the source branch.</li>
+</ul>
+<p>For the fundamental cut-set associated with <span class="math inline">\(C_2\)</span>, taking currents leaving the node group <span class="math inline">\(\{0,1,2\}\)</span> as positive gives:</p>
+<p><span id="eq-cutset-c2"><span class="math display">\[
+i_{C_2} + i_{R_1} - i_{R_2} = 0
+\tag{9}\]</span></span></p>
+<p>For the fundamental cut-set associated with <span class="math inline">\(C_1\)</span>, taking currents leaving the node group <span class="math inline">\(\{1,2,3\}\)</span> as positive gives:</p>
+<p><span id="eq-cutset-c1"><span class="math display">\[
+i_{C_1} + i_{R_2} - i_S = 0
+\tag{10}\]</span></span></p>
+<p>For the fundamental cut-set associated with <span class="math inline">\(L\)</span>, taking currents leaving the node group <span class="math inline">\(\{1,3\}\)</span> as positive gives:</p>
+<p><span id="eq-cutset-l"><span class="math display">\[
+i_L + i_{R_2} - i_S -i_{R_1} = 0
+\tag{11}\]</span></span></p>
+<p><a href="#eq-cutset-c2" class="quarto-xref">Equation&nbsp;9</a>, <a href="#eq-cutset-c1" class="quarto-xref">Equation&nbsp;10</a> and <a href="#eq-cutset-l" class="quarto-xref">Equation&nbsp;11</a> may be compactly expressed in matrix form:</p>
+<p><span id="eq-cutset-matrix-expanded"><span class="math display">\[
+\begin{bmatrix}
+        0 &amp; 1 &amp; 0 &amp; 0 &amp; 1 &amp; -1 \\
+        -1 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 1 \\
+        -1 &amp; 0 &amp; 1 &amp; 0 &amp; -1 &amp; 1
+        \end{bmatrix} \begin{bmatrix}
+        i_S \\
+        i_{C_2} \\
+        i_L \\
+        i_{C_1} \\
+        i_{R_1} \\
+        i_{R_2}
+        \end{bmatrix} = \mathbf{0}
+\tag{12}\]</span></span></p>
+<p><span id="eq-cutset-system"><span class="math display">\[
+\mathbf{Q_f} \mathbf{i} = \mathbf{0}
+\tag{13}\]</span></span></p>
+<p>Here, <span class="math inline">\(\mathbf{i}\)</span> denotes the branch-current vector displayed in <a href="#eq-cutset-matrix-expanded" class="quarto-xref">Equation&nbsp;12</a>.</p>
+</section>
+<section id="fundamental-basic-loop-matrix-bf" class="level2">
+<h2 class="anchored" data-anchor-id="fundamental-basic-loop-matrix-bf">Fundamental Basic Loop Matrix (Bf)</h2>
+<p>The fundamental basic loop matrix <span class="math inline">\(\mathbf{B_f}\)</span> expresses the algebraic relationship of the branch voltages around the basic loops of a network. It can be derived once the co-tree of the network has been identified. For example, the proper tree shown in <a href="#figure-6">Figure 6</a> has three co-tree branches and therefore the KVL equations may be written as:</p>
+<p><span id="eq-loop-r1"><span class="math display">\[
+v_{R_1} + v_L - v_{C_2} = 0
+\tag{14}\]</span></span></p>
+<p><span id="eq-loop-source"><span class="math display">\[
+v_{in} - v_L - v_{C_1} = 0
+\tag{15}\]</span></span></p>
+<p><span id="eq-loop-r2"><span class="math display">\[
+v_{R_2} + v_{C_2} - v_L - v_{C_1} = 0
+\tag{16}\]</span></span></p>
+<p><a href="#eq-loop-r1" class="quarto-xref">Equation&nbsp;14</a>, <a href="#eq-loop-source" class="quarto-xref">Equation&nbsp;15</a> and <a href="#eq-loop-r2" class="quarto-xref">Equation&nbsp;16</a> may be compactly expressed in matrix form:</p>
+<p><span id="eq-loop-matrix-expanded"><span class="math display">\[
+\begin{bmatrix}
+        0 &amp; -1 &amp; 1 &amp; 0 &amp; 1 &amp; 0 \\
+        1 &amp; 0 &amp; -1 &amp; -1 &amp; 0 &amp; 0 \\
+        0 &amp; 1 &amp; -1 &amp; -1 &amp; 0 &amp; 1
+        \end{bmatrix} \begin{bmatrix}
+        v_{in} \\
+        v_{C_2} \\
+        v_L \\
+        v_{C_1} \\
+        v_{R_1} \\
+        v_{R_2}
+        \end{bmatrix} = \mathbf{0}
+\tag{17}\]</span></span></p>
+<p><span id="eq-loop-system"><span class="math display">\[
+\mathbf{B_f} \mathbf{v} = \mathbf{0}
+\tag{18}\]</span></span></p>
+<p>Here, <span class="math inline">\(\mathbf{v}\)</span> denotes the branch-voltage vector displayed in <a href="#eq-loop-matrix-expanded" class="quarto-xref">Equation&nbsp;17</a>.</p>
+</section>
+<section id="formulation-of-network-equations" class="level2">
+<h2 class="anchored" data-anchor-id="formulation-of-network-equations">Formulation of Network Equations</h2>
+<p>For the networks considered here, the circuit equations can be constructed as follows:</p>
+<ol type="1">
+<li>Identify any valid proper tree. State variables can be determined.</li>
+<li>Identify the basic loops and basic cuts for the selected proper tree.</li>
+<li>For each basic cut, derive the KCL equation corresponding to the surfaces created by this basic cut.</li>
+<li>For each basic loop, derive the corresponding KVL equation.</li>
+<li>Substitute the constitutive relationships into the derived equations and perform any necessary algebraic manipulations.</li>
+</ol>
+<p>As an example of the above process, consider the network and corresponding proper tree shown in the figure below.</p>
+<p><a id="figure-12" href=""></a></p>
+<table>
+<tbody><tr>
+<td align="center">
+<img src="figures/circuit1_tex.svg" alt="Figure 12, panel a" width="480"><br>(a)
+</td>
+<td align="center">
+<img src="figures/fig10a.svg" alt="Figure 12, panel b" width="89" height="240"><br>(b)
+</td>
+</tr>
+</tbody></table>
+<p><strong>Figure 12.</strong> A simple electrical network and corresponding spanning tree (solid lines). The branches highlighted in red form the fundamental loop associated with inductor <span class="math inline">\(L\)</span>.</p>
+<p>Since capacitors <span class="math inline">\(C_1\)</span> and <span class="math inline">\(C_2\)</span> are members of the proper tree and inductor <span class="math inline">\(L\)</span> is a member of the co-tree, the state vector of the system may be written as:</p>
+<p><span class="math display">\[
+\mathbf{x} =
+        \begin{bmatrix}
+        v_{C_1} \\
+        v_{C_2} \\
+        i_L \\
+        \end{bmatrix}
+\]</span></p>
+<p>Applying KVL to the fundamental loops of the selected tree gives the matrix <span class="math inline">\(\mathbf{B_f}\)</span>. The fundamental loop associated with inductor <span class="math inline">\(L\)</span> is highlighted above.</p>
+<p><span id="eq-example-loop-matrix"><span class="math display">\[
+\mathbf{B_f} =
+        \begin{bmatrix}
+        -1 &amp; 0 &amp; 1 &amp; 1 &amp; 0 &amp; 0 \\
+        1 &amp; -1 &amp; 0 &amp; -1 &amp; 1 &amp; 0 \\
+        -1 &amp; 1 &amp; 0 &amp; 0 &amp; 0 &amp; 1 \\
+        \end{bmatrix}
+\tag{19}\]</span></span></p>
+<p>The corresponding branch-voltage vector satisfies:</p>
+<p><span class="math display">\[
+\mathbf{B_f} \begin{bmatrix}
+        v_{in} \\
+        v_{C_2} \\
+        v_L \\
+        v_{C_1} \\
+        v_{R_1} \\
+        v_{R_2} \\
+        \end{bmatrix} = \mathbf{0}
+\]</span></p>
+<p>The first row of <span class="math inline">\(\mathbf{B_f}\)</span> gives the inductor voltage. Using <span class="math inline">\(v_L=L\,di_L/dt\)</span> gives:</p>
+<p><span id="eq-inductor-dynamics"><span class="math display">\[
+\begin{bmatrix}
+        L \\
+        \end{bmatrix} \begin{bmatrix}
+        \frac{di_L}{dt} \\
+        \end{bmatrix} = \begin{bmatrix}
+        v_{in} - v_{C_1} \\
+        \end{bmatrix}
+\tag{20}\]</span></span></p>
+<p>Applying KCL to the fundamental cut-sets of the selected tree gives the matrix <span class="math inline">\(\mathbf{Q_f}\)</span>. The node groups defining the cut-sets for capacitors <span class="math inline">\(C_1\)</span> and <span class="math inline">\(C_2\)</span> are shown below.</p>
+<p><a id="figure-13" href=""></a></p>
+<table>
+<tbody><tr>
+<td align="center">
+<img src="figures/fig11a.svg" alt="Figure 13, panel a" width="109" height="240"><br>(a)
+</td>
+<td align="center">
+<img src="figures/fig11b.svg" alt="Figure 13, panel b" width="109" height="240"><br>(b)
+</td>
+</tr>
+</tbody></table>
+<p><strong>Figure 13.</strong> Basic cuts for capacitors <span class="math inline">\(C_1\)</span> and <span class="math inline">\(C_2\)</span> used to analyse the network shown above.</p>
+<p>If the convention that current flows in a positive direction through capacitors <span class="math inline">\(C_1\)</span> and <span class="math inline">\(C_2\)</span> is adopted, the <span class="math inline">\(\mathbf{Q_f}\)</span> matrix may be written as:</p>
+<p><span id="eq-example-cutset-matrix"><span class="math display">\[
+\mathbf{Q_f} =
+        \begin{bmatrix}
+        1 &amp; 0 &amp; -1 &amp; 0 &amp; 1 &amp; -1 \\
+        0 &amp; 1 &amp; 0 &amp; 0 &amp; 1 &amp; -1 \\
+        0 &amp; 0 &amp; -1 &amp; 1 &amp; 1 &amp; 0 \\
+        \end{bmatrix}
+\tag{21}\]</span></span></p>
+<p>The corresponding branch-current vector satisfies:</p>
+<p><span class="math display">\[
+\mathbf{Q_f} \begin{bmatrix}
+        i_S \\
+        i_{C_2} \\
+        i_L \\
+        i_{C_1} \\
+        i_{R_1} \\
+        i_{R_2} \\
+        \end{bmatrix} = \mathbf{0}
+\]</span></p>
+<p>The first row of <span class="math inline">\(\mathbf{Q_f}\)</span> determines the input source current. The remaining rows give the currents in <span class="math inline">\(C_2\)</span> and <span class="math inline">\(C_1\)</span>. Using <span class="math inline">\(i_C=C\,dv_C/dt\)</span> gives:</p>
+<p><span id="eq-capacitor-dynamics"><span class="math display">\[
+\begin{bmatrix}
+        C_{2} &amp; 0 \\
+        0 &amp; C_{1} \\
+        \end{bmatrix} \begin{bmatrix}
+        \frac{dv_{C_2}}{dt} \\
+        \frac{dv_{C_1}}{dt} \\
+        \end{bmatrix} = \begin{bmatrix}
+        i_{R_2} - i_{R_1} \\
+        i_L -  i_{R_1} \\
+        \end{bmatrix}
+\tag{22}\]</span></span></p>
+<p><a href="#eq-inductor-dynamics" class="quarto-xref">Equation&nbsp;20</a> and <a href="#eq-capacitor-dynamics" class="quarto-xref">Equation&nbsp;22</a> specify the state derivatives in terms of the state variables, input voltage, and resistor currents. The resistor currents <span class="math inline">\(i_{R_1}\)</span> and <span class="math inline">\(i_{R_2}\)</span> can be determined from the <span class="math inline">\(\mathbf{B_f}\)</span> equations for the corresponding branches:</p>
+<p><span id="eq-resistor-r1-kvl"><span class="math display">\[
+v_{in} - v_{C_2} - v_{C_1} + v_{R_1} = 0
+\tag{23}\]</span></span></p>
+<p><span id="eq-resistor-r2-kvl"><span class="math display">\[
+-v_{in} + v_{C_2} + v_{R_2} = 0
+\tag{24}\]</span></span></p>
+<p>Isolating the resistor voltages in <a href="#eq-resistor-r1-kvl" class="quarto-xref">Equation&nbsp;23</a> and <a href="#eq-resistor-r2-kvl" class="quarto-xref">Equation&nbsp;24</a>, and applying Ohm’s law, gives:</p>
+<p><span class="math display">\[
+\begin{aligned}
+i_{R_1} &amp;= \frac{v_{C_1}+v_{C_2}-v_{in}}{R_1},\\[4pt]
+i_{R_2} &amp;= \frac{v_{in}-v_{C_2}}{R_2}.
+\end{aligned}
+\]</span></p>
+<p>Substituting the resistor-current expressions into the capacitor and inductor equations gives an explicit state-space model:</p>
+<p><span class="math display">\[
+\begin{aligned}
+\frac{dv_{C_1}}{dt}
+&amp;=\frac{1}{C_1}\left(i_L-\frac{v_{C_1}+v_{C_2}-v_{in}}{R_1}\right),\\[6pt]
+\frac{dv_{C_2}}{dt}
+&amp;=\frac{1}{C_2}\left(\frac{v_{in}-v_{C_2}}{R_2}-\frac{v_{C_1}+v_{C_2}-v_{in}}{R_1}\right),\\[6pt]
+\frac{di_L}{dt}
+&amp;=\frac{v_{in}-v_{C_1}}{L}.
+\end{aligned}
+\]</span></p>
+<p>The state derivatives depend only on the selected state variables, the input voltage, and the component values. Given an input waveform and initial conditions, these equations can be integrated to obtain the transient response.</p>
+<p>For a co-tree resistor, its fundamental-loop KVL equation determines its voltage from the tree-branch voltages; Ohm’s law then gives its current. For a tree resistor, its fundamental-cut-set KCL equation determines its current from the co-tree branch currents; Ohm’s law then gives its voltage.</p>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
