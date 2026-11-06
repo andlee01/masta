@@ -27,17 +27,17 @@ A network branch has two associated attributes: branch current and branch voltag
 
 <td align="center">
 
-<img src="figures/circuit1_tex.svg" alt="Figure 1, panel a" width="360"><br>(a)
+<img src="figures/circuit1_tex.svg" alt="Figure 1, panel a" width="480"><br>(a)
 </td>
 
 <td align="center">
 
-<img src="figures/fig1a.svg" alt="Figure 1, panel b" width="180"><br>(b)
+<img src="figures/fig1a.svg" alt="Figure 1, panel b" width="74" height="200"><br>(b)
 </td>
 
 <td align="center">
 
-<img src="figures/fig1b.svg" alt="Figure 1, panel c" width="180"><br>(c)
+<img src="figures/fig1b.svg" alt="Figure 1, panel c" width="90" height="200"><br>(c)
 </td>
 
 </tr>
@@ -60,17 +60,17 @@ A *loop* within a graph is a set of branches that form a closed path.
 
 <td align="center">
 
-<img src="figures/fig2a.svg" alt="Figure 2, panel a" width="240"><br>(a)
+<img src="figures/fig2a.svg" alt="Figure 2, panel a" width="74" height="200"><br>(a)
 </td>
 
 <td align="center">
 
-<img src="figures/fig2b.svg" alt="Figure 2, panel b" width="240"><br>(b)
+<img src="figures/fig2b.svg" alt="Figure 2, panel b" width="74" height="200"><br>(b)
 </td>
 
 <td align="center">
 
-<img src="figures/fig2c.svg" alt="Figure 2, panel c" width="240"><br>(c)
+<img src="figures/fig2c.svg" alt="Figure 2, panel c" width="74" height="200"><br>(c)
 </td>
 
 </tr>
@@ -89,17 +89,17 @@ A *cut* is a set of branches in a graph which, when cut off, will divide the gra
 
 <td align="center">
 
-<img src="figures/fig3a.svg" alt="Figure 3, panel a" width="240"><br>(a)
+<img src="figures/fig3a.svg" alt="Figure 3, panel a" width="74" height="200"><br>(a)
 </td>
 
 <td align="center">
 
-<img src="figures/fig3b.svg" alt="Figure 3, panel b" width="240"><br>(b)
+<img src="figures/fig3b.svg" alt="Figure 3, panel b" width="74" height="200"><br>(b)
 </td>
 
 <td align="center">
 
-<img src="figures/fig3c.svg" alt="Figure 3, panel c" width="240"><br>(c)
+<img src="figures/fig3c.svg" alt="Figure 3, panel c" width="74" height="200"><br>(c)
 </td>
 
 </tr>
@@ -118,17 +118,17 @@ A *tree* is a set of branches in a graph in which any two nodes are connected by
 
 <td align="center">
 
-<img src="figures/fig4a.svg" alt="Figure 4, panel a" width="240"><br>(a)
+<img src="figures/fig4a.svg" alt="Figure 4, panel a" width="74" height="200"><br>(a)
 </td>
 
 <td align="center">
 
-<img src="figures/fig4b.svg" alt="Figure 4, panel b" width="240"><br>(b)
+<img src="figures/fig4b.svg" alt="Figure 4, panel b" width="74" height="200"><br>(b)
 </td>
 
 <td align="center">
 
-<img src="figures/fig4c.svg" alt="Figure 4, panel c" width="240"><br>(c)
+<img src="figures/fig4c.svg" alt="Figure 4, panel c" width="74" height="200"><br>(c)
 </td>
 
 </tr>
@@ -147,17 +147,17 @@ A *basic cut* is a cut which contains only one tree branch. If a graph contains 
 
 <td align="center">
 
-<img src="figures/fig5a.svg" alt="Figure 5, panel a" width="240"><br>(a)
+<img src="figures/fig5a.svg" alt="Figure 5, panel a" width="90" height="200"><br>(a)
 </td>
 
 <td align="center">
 
-<img src="figures/fig5b.svg" alt="Figure 5, panel b" width="240"><br>(b)
+<img src="figures/fig5b.svg" alt="Figure 5, panel b" width="90" height="200"><br>(b)
 </td>
 
 <td align="center">
 
-<img src="figures/fig5c.svg" alt="Figure 5, panel c" width="240"><br>(c)
+<img src="figures/fig5c.svg" alt="Figure 5, panel c" width="90" height="200"><br>(c)
 </td>
 
 </tr>
@@ -176,17 +176,17 @@ A *basic loop* is a loop which contains only one co-tree branch. There is one ba
 
 <td align="center">
 
-<img src="figures/fig6a.svg" alt="Figure 6, panel a" width="240"><br>(a)
+<img src="figures/fig6a.svg" alt="Figure 6, panel a" width="74" height="200"><br>(a)
 </td>
 
 <td align="center">
 
-<img src="figures/fig6b.svg" alt="Figure 6, panel b" width="240"><br>(b)
+<img src="figures/fig6b.svg" alt="Figure 6, panel b" width="74" height="200"><br>(b)
 </td>
 
 <td align="center">
 
-<img src="figures/fig6c.svg" alt="Figure 6, panel c" width="240"><br>(c)
+<img src="figures/fig6c.svg" alt="Figure 6, panel c" width="74" height="200"><br>(c)
 </td>
 
 </tr>
@@ -310,7 +310,7 @@ With the formulation of a proper tree, state variables of the network are select
 
 <td align="center">
 
-<img src="figures/fig7a.svg" alt="Figure 9, panel b" width="240"><br>(b)
+<img src="figures/fig7a.svg" alt="Figure 9, panel b" width="90" height="200"><br>(b)
 </td>
 
 </tr>
@@ -345,7 +345,7 @@ If resistor $R_1$ of the figure above is replaced with a capacitor, the network 
 
 <td align="center">
 
-<img src="figures/fig8a.svg" alt="Figure 10, panel b" width="240"><br>(b)
+<img src="figures/fig8a.svg" alt="Figure 10, panel b" width="90" height="200"><br>(b)
 </td>
 
 </tr>
@@ -386,7 +386,7 @@ Recall that branches corresponding to inductors may be required to complete the 
 
 <td align="center">
 
-<img src="figures/fig9a.svg" alt="Figure 11, panel b" width="240"><br>(b)
+<img src="figures/fig9a.svg" alt="Figure 11, panel b" width="88" height="200"><br>(b)
 </td>
 
 </tr>
@@ -557,7 +557,7 @@ As an example of the above process, consider the network and corresponding prope
 
 <td align="center">
 
-<img src="figures/fig10a.svg" alt="Figure 12, panel b" width="240"><br>(b)
+<img src="figures/fig10a.svg" alt="Figure 12, panel b" width="74" height="200"><br>(b)
 </td>
 
 </tr>
@@ -625,12 +625,12 @@ The $\mathbf{Q_f}$ matrix can be derived with the aid of the proper tree and app
 
 <td align="center">
 
-<img src="figures/fig11a.svg" alt="Figure 13, panel a" width="360"><br>(a)
+<img src="figures/fig11a.svg" alt="Figure 13, panel a" width="90" height="200"><br>(a)
 </td>
 
 <td align="center">
 
-<img src="figures/fig11b.svg" alt="Figure 13, panel b" width="360"><br>(b)
+<img src="figures/fig11b.svg" alt="Figure 13, panel b" width="90" height="200"><br>(b)
 </td>
 
 </tr>

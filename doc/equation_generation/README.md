@@ -40,6 +40,15 @@ repository Markdown view displays the referenced images but does not execute
 Graphviz, LaTeX, or Quarto. Reading the chapter requires none of those tools.
 PDF, DVI, auxiliary files, and temporary PNG previews need not be committed.
 
+Multi-panel figures use HTML table rows that work in GitHub Markdown. Circuit
+panels are 480 pixels wide; graph panels are 200 pixels high with proportional
+widths, so tall, narrow graphs do not overwhelm the circuit drawings.
+
+On the current Linux/WSL computer, Graphviz is installed per user under
+`~/.local/opt/graphviz`, with a `~/.local/bin/dot` launcher. This avoids requiring
+a sudo password. Other computers can use their normal Graphviz installation;
+the renderer only requires `dot` to be on `PATH`.
+
 Migration retains the legacy exposition and equations rather than updating
 them to the current Python API. Equation labels were replaced with explicit
 Markdown links, figure groups were numbered, and minor typographical errors
