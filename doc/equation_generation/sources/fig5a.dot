@@ -1,0 +1,14 @@
+digraph G1 {
+
+node [shape=circle];
+0 [color=green, style=filled];
+1 [color=green, style=filled];
+2 [color=green, style=filled];
+3 [color=blue, style=filled];
+0 -> 1 [style=dashed, label=<<i>i<SUB>S</SUB></i>>];
+2 -> 0 [label=<<i>i<SUB>C1</SUB></i>>];
+3 -> 0 [color=red, style=dashed, label=<<i>i<SUB>R2</SUB></i>>];
+1 -> 2 [label=<<i>i<SUB>L</SUB></i>>];
+2 -> 3 [color=red, style=dashed, label=<<i>i<SUB>R1</SUB></i>>];
+1 -> 3 [color=red, label=<<i>i<SUB>C2</SUB></i>>];
+}

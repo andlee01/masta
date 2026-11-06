@@ -1,0 +1,10 @@
+digraph G1 {
+
+node [shape=circle];
+0 -> 1 [color=red, label=<<i>v<SUB>IN</SUB></i>>];
+0 -> 2 [color=red, label=<<i>v<SUB>C1</SUB></i>>];
+0 -> 3 [style=dashed, label=<<i>v<SUB>R2</SUB></i>>];
+2 -> 1 [style=dashed, label=<<i>v<SUB>L</SUB></i>>];
+3 -> 2 [color=red, style=dashed, label=<<i>v<SUB>R1</SUB></i>>];
+3 -> 1 [color=red, label=<<i>v<SUB>C2</SUB></i>>];
+}

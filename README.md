@@ -3,6 +3,10 @@
 ## Introduction
 Masta is a tool that automates the generation of electrical networks circuit equations. It can be used to solve both linear and non-linear circuits. Linear circuits can also be translated into LTI systems.
 
+## Documentation
+
+- [Equation generation: circuit topology, graph theory, and network equations](doc/equation_generation/equation_generation.md)
+
 ## Example
 
 ![Example electrical network.](/assets/circuit1_rser_tex.svg)

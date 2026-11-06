@@ -1,0 +1,27 @@
+\documentclass{standalone}
+
+\usepackage{tikz}
+\usepackage[europeanresistors,americaninductors,siunitx]{circuitikz}
+
+\begin{document}
+ \begin{circuitikz}
+   \draw (0,0) to[V, v_=$V_{IN}$, i_>=$i_{IN}$] (0,4)
+               to[short] (2,4)
+               to[short] (2,5)
+               to[C, l^=$C_2$, i^=$i_{C_2}$, v_<=$v_{C_2}$] (8, 5)
+               to[short] (8, 4)
+               to[short] (10, 4)
+               to[R, l_=$R_2$, i_=$i_{R_2}$, v^<=$v_{R_2}$] (10,0);
+
+   \draw (5,3) to[C, l^=$C_1$, i^=$i_{C_1}$, v_<=$v_{C_1}$,-*] (5, 0);
+
+   \draw (2,4) to[short, *-] (2,3)
+               to[L, l_=$L$, i_=$i_L$, v^<=$v_L$, -*] (5, 3)
+               to[C, l_=$C_3$, i_=$i_{C_3}$, v^<=$v_{C_3}$] (8,3)
+               to[short,-*] (8,4)
+               {[anchor=south east] (5,0) node {0} (2,4) node {1} (5,3) node {2} (8,4) node {3}};
+
+   \draw (10,0) to[short] (0,0);
+
+ \end{circuitikz}
+\end{document}
