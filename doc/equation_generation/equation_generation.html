@@ -404,7 +404,7 @@ i_{L_1} = i_S - i_{L_2}
 <p>The branch-current vector <span class="math inline">\(\mathbf{i}\)</span> and branch-voltage vector <span class="math inline">\(\mathbf{v}\)</span> are defined as:</p>
 <p><span class="math display">\[
 \begin{aligned}
-\mathbf{i} &amp;= [i_S,\,i_{C_2},\,i_L,\,i_{C_1},\,i_{R_1},\,i_{R_2}]^{\mathsf T},\\[4pt]
+\mathbf{i} &amp;= [i_S,\,i_{C_2},\,i_L,\,i_{C_1},\,i_{R_1},\,i_{R_2}]^{\mathsf T},\\
 \mathbf{v} &amp;= [v_{in},\,v_{C_2},\,v_L,\,v_{C_1},\,v_{R_1},\,v_{R_2}]^{\mathsf T}.
 \end{aligned}
 \]</span></p>
@@ -597,7 +597,7 @@ v_{in} - v_{C_2} - v_{C_1} + v_{R_1} = 0
 <p>Isolating the resistor voltages in <a href="#eq-resistor-r1-kvl" class="quarto-xref">Equation&nbsp;23</a> and <a href="#eq-resistor-r2-kvl" class="quarto-xref">Equation&nbsp;24</a>, and applying Ohm’s law, gives:</p>
 <p><span class="math display">\[
 \begin{aligned}
-i_{R_1} &amp;= \frac{v_{C_1}+v_{C_2}-v_{in}}{R_1},\\[4pt]
+i_{R_1} &amp;= \frac{v_{C_1}+v_{C_2}-v_{in}}{R_1},\\
 i_{R_2} &amp;= \frac{v_{in}-v_{C_2}}{R_2}.
 \end{aligned}
 \]</span></p>
@@ -605,9 +605,9 @@ i_{R_2} &amp;= \frac{v_{in}-v_{C_2}}{R_2}.
 <p><span class="math display">\[
 \begin{aligned}
 \frac{dv_{C_1}}{dt}
-&amp;=\frac{1}{C_1}\left(i_L-\frac{v_{C_1}+v_{C_2}-v_{in}}{R_1}\right),\\[6pt]
+&amp;=\frac{1}{C_1}\left(i_L-\frac{v_{C_1}+v_{C_2}-v_{in}}{R_1}\right),\\
 \frac{dv_{C_2}}{dt}
-&amp;=\frac{1}{C_2}\left(\frac{v_{in}-v_{C_2}}{R_2}-\frac{v_{C_1}+v_{C_2}-v_{in}}{R_1}\right),\\[6pt]
+&amp;=\frac{1}{C_2}\left(\frac{v_{in}-v_{C_2}}{R_2}-\frac{v_{C_1}+v_{C_2}-v_{in}}{R_1}\right),\\
 \frac{di_L}{dt}
 &amp;=\frac{v_{in}-v_{C_1}}{L}.
 \end{aligned}

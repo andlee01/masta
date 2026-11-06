@@ -293,7 +293,7 @@ The branch-current vector $\mathbf{i}$ and branch-voltage vector $\mathbf{v}$ ar
 
 $$
 \begin{aligned}
-\mathbf{i} &= [i_S,\,i_{C_2},\,i_L,\,i_{C_1},\,i_{R_1},\,i_{R_2}]^{\mathsf T},\\[4pt]
+\mathbf{i} &= [i_S,\,i_{C_2},\,i_L,\,i_{C_1},\,i_{R_1},\,i_{R_2}]^{\mathsf T},\\
 \mathbf{v} &= [v_{in},\,v_{C_2},\,v_L,\,v_{C_1},\,v_{R_1},\,v_{R_2}]^{\mathsf T}.
 \end{aligned}
 $$
@@ -522,7 +522,7 @@ Isolating the resistor voltages in @eq-resistor-r1-kvl and @eq-resistor-r2-kvl, 
 
 $$
 \begin{aligned}
-i_{R_1} &= \frac{v_{C_1}+v_{C_2}-v_{in}}{R_1},\\[4pt]
+i_{R_1} &= \frac{v_{C_1}+v_{C_2}-v_{in}}{R_1},\\
 i_{R_2} &= \frac{v_{in}-v_{C_2}}{R_2}.
 \end{aligned}
 $$
@@ -532,9 +532,9 @@ Substituting the resistor-current expressions into the capacitor and inductor eq
 $$
 \begin{aligned}
 \frac{dv_{C_1}}{dt}
-&=\frac{1}{C_1}\left(i_L-\frac{v_{C_1}+v_{C_2}-v_{in}}{R_1}\right),\\[6pt]
+&=\frac{1}{C_1}\left(i_L-\frac{v_{C_1}+v_{C_2}-v_{in}}{R_1}\right),\\
 \frac{dv_{C_2}}{dt}
-&=\frac{1}{C_2}\left(\frac{v_{in}-v_{C_2}}{R_2}-\frac{v_{C_1}+v_{C_2}-v_{in}}{R_1}\right),\\[6pt]
+&=\frac{1}{C_2}\left(\frac{v_{in}-v_{C_2}}{R_2}-\frac{v_{C_1}+v_{C_2}-v_{in}}{R_1}\right),\\
 \frac{di_L}{dt}
 &=\frac{v_{in}-v_{C_1}}{L}.
 \end{aligned}
