@@ -413,7 +413,7 @@ $$
 
 ## Fundamental Cut-set Matrix (Qf)
 
-For the six-branch circuit used in the matrix examples, both branch vectors use the fixed order $(S,C_2,L,C_1,R_1,R_2)$, where $S$ denotes the input voltage-source branch. Thus,
+The branch-current vector $\mathbf{i}$ and branch-voltage vector $\mathbf{v}$ are defined as:
 
 $$
 \begin{aligned}
@@ -421,8 +421,6 @@ $$
 \mathbf{v} &= [v_{in},\,v_{C_2},\,v_L,\,v_{C_1},\,v_{R_1},\,v_{R_2}]^{\mathsf T}.
 \end{aligned}
 $$
-
-The current $i_S$ flows through the voltage-source branch; it is not a separate current source. Matrix columns follow this branch order. Rows correspond to the fundamental cut-sets or loops of the selected tree, which may differ between examples.
 
 The fundamental cut-set matrix $\mathbf{Q_f}$ expresses the KCL equations for the fundamental cut-sets of a network. The spanning tree shown in [Figure 5](#figure-5) contains three tree branches and therefore has three fundamental cut-sets.
 
