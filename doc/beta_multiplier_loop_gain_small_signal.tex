@@ -1,0 +1,84 @@
+\documentclass{standalone}
+
+\usepackage{tikz}
+\usepackage[europeanresistors,americaninductors,americancurrents,siunitx]{circuitikz}
+
+\input{../doc/cmos_small_signal.tex}
+
+% =========================================================
+% Compile-time flag for optional stray capacitor
+% Default: OFF
+% Enable by passing \def\EnableCstray{} via pdflatex
+% =========================================================
+
+\newif\ifshowCstray
+\showCstrayfalse
+
+\ifdefined\EnableCstray
+    \showCstraytrue
+\fi
+
+\begin{document}
+\begin{circuitikz}
+
+    \draw (0,-2) node[ground](GND){};
+    \draw (6,-2) node[ground](GND_M){};
+    \draw (0,8) node[vdd](VDD){$V_{DD}sml$};
+    \draw (6,8) node[vdd](VDD_M){$V_{DD}sml$};
+
+    % PMOS transistors
+    \pmosmx{M3}{shift={(0,4)}}{M3}
+    \pmos{M4}{shift={(4,4)}}{M4}
+
+    % VDD connections
+    \draw (SM3) to[short] (VDD);
+    \draw (SM4) to[short] (VDD_M);
+
+    % Gate-drain connection M4
+    \draw (GM4) to[short] (GM4 |- DM4) to[short] (DM4);
+    \draw (DM4) node[circ] {};
+    \draw (GM4) node[circ] {};
+
+    % Connect PMOS gates
+    \draw (GM3) to[short] (GM4);
+
+    % NMOS transistors
+    \nmosmx{M1}{shift={(0,0)}}{M1}
+    \nmos{M2}{shift={(4,0)}}{M2}
+
+    % Gate-drain connection M1
+    \draw (GM1) to[short] (GM1 |- DM1) to[short] (DM1);
+    \draw (DM1) node[circ] {};
+    \draw (GM1) node[circ] {};
+
+    % Test source
+    \draw (GM2)
+        to[short] ++(0,-1)
+        to[V, l_=$V_{\text{test}}$] ++(0,-2)
+        node[ground]{};
+
+    % Drain connections
+    \draw (DM3) to[short] (DM1);
+    \draw (DM4) to[short] (DM2);
+
+    % Source connection M1
+    \draw (SM1) to[short] (GND);
+
+    % Rref branch
+    \draw (SM2)
+        to[short] ++(0,-1) coordinate(Rref_top)
+        \ifshowCstray node[circ] {} \fi
+        to[R, l^=${R_{ref}}$] ++(0,-2) coordinate(Rref_bot)
+        \ifshowCstray node[circ] {} \fi
+        to[short] (GND_M);
+
+    % Optional stray capacitor branch
+    \ifshowCstray
+    \draw (Rref_top)
+        to[short] ++(2.0,0)
+        to[C, l=${C_{stray}}$] ++(0,-2)
+        to[short] (Rref_bot);
+    \fi
+
+\end{circuitikz}
+\end{document}

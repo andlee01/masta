@@ -1,0 +1,52 @@
+\documentclass{standalone}
+
+\usepackage{tikz}
+\usepackage[europeanresistors,americaninductors,americancurrents,siunitx]{circuitikz}
+
+\begin{document}
+ \begin{circuitikz}
+
+    \draw (0,-2) node[ground](GND){};
+    \draw (4,-2) node[ground](GND_M){};
+    \draw (0,4) node[vcc](VDD){$V_{DD}$};
+    \draw (4,4) node[vdd](VDD_M){$V_{DD}$};
+
+    % The pmos FET transistor
+    \draw (0,4) node[pmos, xscale=-1, anchor=S](M3){} node[below left,  yshift=0.3cm] at (M3) {M3};
+    \draw (4,4) node[pmos, xscale=1,  anchor=S](M4){} node[below right, yshift=0.3cm] at (M4) {M4};
+
+    % Vdd Connection
+    \draw (M3.S) to[short] (VDD);
+    \draw (M4.S) to[short] (VDD_M);
+
+    % Gate-source connection
+    \draw (M4.G) to[short] (M4.G |- M4.D) to[short] (M4.D);
+    \draw (M4.D) node[circ] {} node[left] {};
+    \draw (M4.G) node[circ] {} node[left] {};
+
+    % Connect gates
+    \draw (M3.G) to[short] (M4.G);
+
+    % The nmos FET transistor
+    \draw (0,0) node[nmos, xscale=-1, anchor=S](M1){} node[below left,  yshift=0.3cm] at (M1) {M1};
+    \draw (4,0) node[nmos, xscale=1,  anchor=S](M2){} node[below right, yshift=0.3cm] at (M2) {M2};
+
+    % Gate-source connection
+    \draw (M1.G) to[short] (M1.G |- M1.D) to[short] (M1.D);
+    \draw (M1.D) node[circ] {} node[left] {};
+    \draw (M1.G) node[circ] {} node[left] {};
+
+    % Connect gates
+    \draw (M1.G) to[short] (M2.G);
+
+    % Connect drains
+    \draw (M3.D) to[short] (M1.D);
+    \draw (M4.D) to[short] (M2.D);
+
+    % M1 source to GND
+    \draw (M1.S) to[short] (GND);
+
+    % Rref
+    \draw (M2.S) to[R, l^=${R_{ref}}$] ++(0,-2) to[short] (GND_M);
+ \end{circuitikz}
+ \end{document}
